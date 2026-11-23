@@ -34,6 +34,13 @@
     .mp-toggle > .btn-outline-primary:hover { background:#c7d2fe !important; color:#1e3a8a !important; }
     [data-bs-theme="dark"] .mp-toggle > .btn-primary { background:#3b82f6 !important; border-color:#3b82f6 !important; }
     [data-bs-theme="dark"] .mp-toggle > .btn-outline-primary { background:rgba(255,255,255,.06) !important; border-color:rgba(255,255,255,.12) !important; color:#94a3b8 !important; }
+    .cal{width:100%;border-collapse:separate;border-spacing:4px;table-layout:fixed}
+    .cal th{font-size:12px;color:var(--bs-secondary-color);text-align:center;font-weight:500}
+    .cal td{padding:0;vertical-align:top}.cal td.wk{width:36px;text-align:center;vertical-align:middle}
+    .cal .dc{width:100%;min-height:64px;border:1px solid rgba(128,128,128,.35);border-radius:10px;text-align:left;padding:4px 7px;font-size:13px;background:#dcfce7;color:#14532d;cursor:pointer;position:relative}
+    .cal .dc.off{background:rgba(128,128,128,.12);color:#9ca3af;cursor:not-allowed;border-style:dashed}
+    .cal .dc.out{opacity:.55}.cal .dc.sel{outline:3px solid #1e3a8a;outline-offset:-1px}.cal .dc.today b{text-decoration:underline}
+    .cal .dc .n{position:absolute;right:5px;bottom:4px;background:#1e3a8a;color:#fff;border-radius:999px;font-size:11px;padding:0 7px}
     .wk-lbl { color:#a3a8b3; font-size:11.5px; font-weight:400; }
     [data-bs-theme="dark"] .wk-lbl { color:#6b7280; }
     body {
@@ -148,13 +155,16 @@
         <button type="button" class="btn btn-outline-primary btn-sm" id="btnTabOverview" onclick="switchTab('overview')">
           <i class="bi bi-bar-chart-fill"></i> <span data-i18n="tabOverview">ภาพรวมเปรียบเทียบ</span>
         </button>
+        <button type="button" class="btn btn-primary btn-sm d-none" id="btnPubDaily" onclick="switchTab('pdaily')"><i class="bi bi-clock-history"></i> <span id="tPubDaily"></span></button>
+        <button type="button" class="btn btn-outline-primary btn-sm d-none" id="btnPubPlan" onclick="switchTab('pplan')"><i class="bi bi-calendar3"></i> <span id="tPubPlan"></span></button>
+        <button type="button" class="btn btn-outline-primary btn-sm d-none" id="btnPubLeave" onclick="switchTab('pleave')"><i class="bi bi-envelope-paper"></i> <span id="tPubLeave"></span></button>
         <button type="button" class="btn btn-outline-primary btn-sm" id="btnTabOt" onclick="switchTab('ot')">
           <i class="bi bi-clock-history"></i> <span data-i18n="tabOT">โอที (OT)</span>
         </button>
       </div>
 
       <!-- เมนู Export -->
-      <div class="dropdown">
+      <div class="dropdown" id="exportMenu">
         <button class="btn btn-outline-success btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
           <i class="bi bi-file-earmark-arrow-down-fill"></i> <span data-i18n="menuExport">Export</span>
         </button>
@@ -192,6 +202,14 @@
   </div>
 
   <!-- แท็บ: รายบุคคล (การ์ด / ตาราง / สรุปรายคน / Log) -->
+  <!-- public (before login): daily OT / OT plan calendar / leave request -->
+  <div id="viewPub" class="d-none">
+    <div id="pubMsg"></div>
+    <div id="pubDaily" class="d-none"></div>
+    <div id="pubPlan" class="d-none"></div>
+    <div id="pubLeave" class="d-none"></div>
+  </div>
+
   <div id="viewLeave">
     <div id="filterBar" class="row g-2 mb-3 align-items-center">
       <div class="col-auto">
@@ -1044,8 +1062,8 @@ async function callGasApi(action, payload) {
   }
 
   function switchTab(tab) {
-    if (!isUnlocked()) tab = 'ot';
-    curTab = tab;
+    if (!isUnlocked()) { pubSwitch(['pdaily', 'pplan', 'pleave'].includes(tab) ? tab : pubTab); return; }
+    curTab = tab; document.getElementById('viewPub').classList.add('d-none');
     [['cards', 'Cards'], ['overview', 'Overview'], ['ot', 'Ot']].forEach(([t, n]) => {
       const b = document.getElementById('btnTab' + n);
       b.classList.toggle('btn-primary', t === tab);
@@ -1081,6 +1099,7 @@ async function callGasApi(action, payload) {
     byId('searchInput').placeholder = L('ค้นหาชื่อ หรือ รหัสพนักงาน...', 'Search name or ID...');
     renderCards();
     renderOverview();
+    if (!isUnlocked()) pubSwitch(pubTab);
     if (!byId('viewOT').classList.contains('d-none')) renderOT();
     if (!byId('dataPanel').classList.contains('d-none')) dmRender();
     syncRangeBar();
@@ -1148,7 +1167,8 @@ function applyMode() {
   i18n.th.appTitle = u ? 'แมนพาวเวอร์' : 'OT'; i18n.en.appTitle = u ? 'ManPower' : 'OT'; i18n.zh.appTitle = u ? '人力管理' : '加班';
   document.querySelectorAll('[data-i18n="appTitle"]').forEach(el => el.innerText = i18n[currentLang].appTitle);
   document.title = i18n[currentLang].appTitle;
-  ['btnTabCards', 'btnTabOverview', 'btnSettingsTop'].forEach(id => byId(id).classList.toggle('d-none', !u));
+  ['btnTabCards', 'btnTabOverview', 'btnSettingsTop', 'btnTabOt', 'exportMenu'].forEach(id => byId(id).classList.toggle('d-none', !u));
+  ['btnPubDaily', 'btnPubPlan', 'btnPubLeave'].forEach(id => byId(id).classList.toggle('d-none', u));
   byId('btnLock').innerHTML = u ? '<i class="bi bi-lock-fill"></i>' : '<i class="bi bi-unlock-fill"></i>';
   byId('btnLock').title = u ? 'Lock' : 'Unlock (PIN)';
 }
@@ -1202,9 +1222,10 @@ async function refreshLogs() {
   const u = isUnlocked();     // locked (OT mode) never downloads leave / quota data
   [leaveLogs, otRows, quotaLogs, planRows] = await Promise.all([u ? xAll('mp_leave_logs') : [], xAll('mp_ot_logs'), u ? xAll('mp_quota_logs') : [], xAll('mp_ot_plans')]);
   customHols = await xAll('mp_custom_holidays').catch(() => customHols);
+  if (u) await loadReqs();
   if (!otA) otA = isUnlocked() ? (otRows.reduce((m, r) => r.ot_date > m ? r.ot_date : m, '') || nowBkk()) : nowBkk();
 }
-function renderAllViews() { if (isUnlocked()) { renderCards(); renderOverview(); } if (!byId('viewOT').classList.contains('d-none')) renderOT(); }
+function renderAllViews() { if (isUnlocked()) { renderCards(); renderOverview(); } else renderPubData(); if (!byId('viewOT').classList.contains('d-none')) renderOT(); }
 async function reloadAll() { employeesData = await loadLeaveData(isUnlocked()); await refreshLogs(); renderAllViews(); }
 
 /* ---------- Add Data modal ---------- */
@@ -1255,7 +1276,7 @@ function closeDataPanel() { byId('dataPanel').classList.add('d-none'); }
 byId('rangeBar').parentNode.insertBefore(byId('dataPanel'), byId('rangeBar'));
 function dmSetMode(m) { dmMode = m; dmMethod = 'form'; dmNote(''); dmRender(); }
 function dmSetMethod(m) { dmMethod = m; dmNote(''); dmRender(); }
-function dmNote(msg, ok = true) { byId('dmMsg').innerHTML = msg ? `<div class="alert alert-${ok ? 'success' : 'danger'} py-2 small">${xE(msg)}</div>` : ''; }
+function dmNote(msg, ok = true) { (isUnlocked() ? byId('dmMsg') : byId('pubMsg')).innerHTML = msg ? `<div class="alert alert-${ok ? 'success' : 'danger'} py-2 small">${xE(msg)}</div>` : ''; }
 const empOpts = () => employeesData.map(e => `<option value="${e.startRow}">${xE(e.empId)} ${xE(e.name)}</option>`).join('');
 function dmRender() {
   byId('dmMode').innerHTML = dmModes().map(([k, [a, b]]) => `<option value="${k}"${k === dmMode ? ' selected' : ''}>${L(a, b)}</option>`).join('');
@@ -1953,13 +1974,22 @@ function renderLogView() {
     const d = otRows.filter(r => inRg(r.ot_date)).sort((a, b) => b.ot_date.localeCompare(a.ot_date) || b.id - a.id); total = d.length;
     head = [L('วันที่', 'Date'), L('รหัส', 'ID'), L('ชื่อ', 'Name'), L('กะ', 'Shift'), L('ประเภทวัน', 'Day type'), 'OT (h)', L('ที่มา', 'Source'), ''];
     rows = d.slice(0, CAP).map(r => { const w = otWho(r); return [fmtD(r.ot_date), xE(w.code), xE(w.name), xE(r.shift || ''), xE(otT(dayKind(r.day_type))), r.ot_hours, xE(r.source || ''), `<button class="btn btn-sm btn-outline-danger py-0" onclick="otDel(${r.id})"><i class="bi bi-trash"></i></button>`]; });
+  } else if (logKind === 'req') {
+    const d = [...reqRows].sort((a, b) => b.id - a.id); total = d.length;
+    head = [L('ส่งเมื่อ', 'Sent', '提交时间'), L('รหัส', 'ID', '工号'), L('ชื่อ', 'Name', '姓名'), L('ประเภท', 'Type', '类别'), L('วันที่ลา', 'Leave date', '请假日期'), L('เวลา / ชม.', 'Time / hours', '时间/小时'), L('เหตุผล', 'Reason', '原因'), L('หลักฐาน', 'Evidence', '凭证'), L('สถานะ', 'Status', '状态'), ''];
+    const stB = { pending: ['bg-warning text-dark', L('รออนุมัติ', 'Pending', '待审批')], approved: ['bg-success', L('อนุมัติแล้ว', 'Approved', '已批准')], rejected: ['bg-secondary', L('ไม่อนุมัติ', 'Rejected', '已拒绝')] };
+    rows = reqErr ? [[xE(reqErr + ' — ' + L('ยังไม่ได้รัน manpower-leave-requests.sql ใน Supabase?', 'Has manpower-leave-requests.sql been run in Supabase?', '是否已在 Supabase 运行 manpower-leave-requests.sql？'))]] : d.slice(0, CAP).map(r => { const sb = stB[r.status] || stB.pending;
+      return [xE(new Date(r.created_at).toLocaleString(L('th-TH', 'en-GB'), { timeZone: 'Asia/Bangkok', dateStyle: 'short', timeStyle: 'short' })), xE(r.emp_code), xE(r.emp_name), xE(lvName(r.leave_key)),
+        fmtD(r.leave_date) + (r.leave_end && r.leave_end !== r.leave_date ? ' – ' + fmtD(r.leave_end) : ''), r.all_day ? L('ทั้งวัน', 'All day', '全天') + ' · ' + r.hours + 'h' : `${String(r.time_from || '').slice(0, 5)}–${String(r.time_to || '').slice(0, 5)} · ${r.hours}h`,
+        xE(r.reason || ''), (r.evidence || []).map(f => `<a href="${xE(f.url)}" target="_blank" rel="noopener"><i class="bi bi-paperclip"></i>${xE(f.name)}</a>`).join('<br>') || '-', `<span class="badge ${sb[0]}">${sb[1]}</span>`,
+        `<div class="d-flex gap-1">${r.status === 'pending' ? `<button class="btn btn-sm btn-success py-0" title="${L('อนุมัติ', 'Approve')}" onclick="reqDecide(${r.id},'approved')"><i class="bi bi-check-lg"></i></button><button class="btn btn-sm btn-outline-secondary py-0" title="${L('ไม่อนุมัติ', 'Reject')}" onclick="reqDecide(${r.id},'rejected')"><i class="bi bi-x-lg"></i></button>` : ''}<button class="btn btn-sm btn-outline-danger py-0" onclick="reqDel(${r.id})"><i class="bi bi-trash"></i></button></div>`]; });
   } else {
     const d = quotaLogs.filter(r => inRg(bkkDate(r.created_at))).sort((a, b) => b.id - a.id); total = d.length;
     head = [L('เวลา', 'Time'), L('รหัส', 'ID'), L('ชื่อ', 'Name'), L('ประเภท', 'Type'), L('เดิม → ใหม่', 'Old → New'), L('หมายเหตุ', 'Note'), L('โดย', 'By')];
     rows = d.slice(0, CAP).map(r => { const e = em.get(r.employee_id); return [xE(new Date(r.created_at).toLocaleString(L('th-TH', 'en-GB'), { timeZone: 'Asia/Bangkok' })), xE(e ? e.empId : ''), xE(e ? e.name : r.employee_id), xE(LEAVE_LABELS[r.leave_key] || r.leave_key), `${r.old_quota ?? '—'} → <b>${r.new_quota}</b>`, xE(r.note || ''), xE(r.changed_by || '')]; });
   }
   byId('viewLog').innerHTML = `<div class="emp-card p-3"><div class="d-flex flex-wrap gap-2 align-items-center mb-2"><div class="btn-group btn-group-sm">` +
-    [['leave', L('ประวัติการลา', 'Leave log')], ['ot', 'OT log'], ['quota', L('ประวัติโควต้า', 'Quota log')]].map(([k, l]) => `<button class="btn ${logKind === k ? 'btn-primary' : 'btn-outline-primary'}" onclick="setLogKind('${k}')">${l}</button>`).join('') +
+    [['leave', L('ประวัติการลา', 'Leave log')], ['ot', 'OT log'], ['req', reqLbl()], ['quota', L('ประวัติโควต้า', 'Quota log')]].map(([k, l]) => `<button class="btn ${logKind === k ? 'btn-primary' : 'btn-outline-primary'}" onclick="setLogKind('${k}')">${l}</button>`).join('') +
     `</div><span class="small text-muted">${total} ${L('รายการ', 'records')}${total > CAP ? ' · ' + L('แสดง ' + CAP + ' รายการล่าสุด (ดูทั้งหมดใน Excel)', 'showing latest ' + CAP + ' (full list in Excel)') : ''}</span></div>` +
     `<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0"><thead class="table-light"><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${head.length}" class="text-muted text-center">—</td></tr>`}</tbody></table></div></div>`;
 }
@@ -2066,6 +2096,173 @@ const X3 = {
 };
 Object.entries(X3).forEach(([k, [a, b]]) => { i18n.th[k] = a; i18n.en[k] = b; });
 i18n.zh = Object.assign({}, i18n.en, {"appTitle": "员工请假管理", "tabCards": "请假", "tabOverview": "团队概览", "btnAdd": "添加员工", "btnSettings": "设置", "menuExport": "导出", "exExcel": "下载 Excel（所有标签/视图）", "exPdf": "PDF — 当前视图", "exPdfAll": "PDF — 所有标签/视图", "sortDefault": "默认顺序", "sortMost": "请假指数 高→低", "sortLeast": "请假指数 低→高", "legendLow": "< 50% 正常", "legendMid": "50-79% 警告", "legendHigh": "≥ 80% 严重/超额", "typeAnnual": "年假", "typePersonal": "事假", "typeSick": "病假", "days": "天", "scoreLabel": "请假指数", "noNote": "暂无备注…", "chartRankTitle": "个人平均请假指数排名 (%)", "chartRankSub": "按各假别平均百分比计算", "chartTypeTitle": "组织请假构成", "chartTypeSub": "各假别平均额度使用率对比", "kpiTotalEmp": "员工总数", "kpiTopLeaver": "最高请假指数", "kpiAvgLeave": "团队平均指数", "kpiOverQuota": "超额人数", "modalEditTitle": "编辑员工", "modalAddTitle": "添加新员工", "modalSetTitle": "颜色与批量额度设置", "lblEmpId": "工号", "lblName": "姓名", "colType": "假别", "colQuota": "额度（天）", "colUsed": "已用（天）", "lblNote": "备注", "btnDelete": "删除", "btnCancel": "取消", "btnSave": "保存", "btnAddConfirm": "添加员工", "pdfModalTitle": "PDF 报表预览（竖版）", "pdfHeaderTitle": "ManPower 报表", "pdfThEmpId": "工号", "pdfThName": "姓名", "pdfThType": "假别", "pdfThQuota": "额度", "pdfThUsed": "已用", "pdfThRemaining": "剩余", "pdfThNote": "备注", "btnConfirmPdf": "确认下载 PDF", "tabOT": "加班 (OT)", "otDay": "日", "otWeek": "周", "otMonth": "月", "otYear": "年", "otAll": "所有人", "pinTitle": "请输入密码", "pinGo": "登录", "btnAddData": "添加数据", "dmTitle": "添加数据", "vwCards": "卡片", "vwTable": "表格", "vwSummary": "个人汇总", "rgTitle": "日期范围", "rgClear": "清除范围", "otActual": "实际加班", "otPlan": "加班计划", "btnOtDaily": "每日加班", "btnOtPlan": "休息日加班计划", "fEmp": "员工", "fDate": "请假日期", "fType": "假别", "fHours": "小时", "fReason": "原因", "btnSaveLeave": "保存请假", "leaveHist": "近期请假记录", "quotaTitle": "请假额度管理", "quotaNote": "备注（记入日志）", "btnSaveQuota": "保存额度", "quotaHist": "额度修改记录", "otFile": "文件 .xlsx / .csv", "otMapTitle": "列映射", "btnOtImport": "导入", "dmModeLbl": "模式", "dmMethodLbl": "录入方式", "btnEntry": "数据录入", "btnQuota": "额度"});
+</script>
+
+<script>
+/* ===================== public (before login) tabs: daily OT · OT plan calendar · leave request ===================== */
+let pubTab = 'pdaily', pubBuilt = '', pdSub = 'form', pdA = '', calY = 0, calM = 0, calSel = '', reqRows = [], reqErr = '';
+const MONTHS = () => currentLang === 'th' ? ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'] : currentLang === 'zh' ? Array.from({ length: 12 }, (_, i) => (i + 1) + '月') : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const WDM = () => currentLang === 'th' ? ['จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.', 'อา.'] : currentLang === 'zh' ? ['一', '二', '三', '四', '五', '六', '日'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const planOpen = d => holKind(d) === 'custom' || [5, 6, 0].includes(dow(d));            // Fri / Sat / Sun + custom holidays
+const empByCode = c => { const k = String(c || '').trim().toLowerCase(); return k ? employeesData.find(e => String(e.empId).trim().toLowerCase() === k) : null; };
+function lookupName(inp, outId) {
+  const e = empByCode(inp.value), o = byId(outId);
+  o.textContent = e ? '✓ ' + e.name : (inp.value.trim() ? '✗ ' + L('ไม่พบรหัสนี้', 'Code not found', '未找到该工号') : '');
+  o.className = 'small fw-bold ' + (e ? 'text-success' : 'text-danger'); return e;
+}
+const codeList = () => `<datalist id="empCodes">${employeesData.map(e => `<option value="${xE(e.empId)}">${xE(e.name)}</option>`).join('')}</datalist>`;
+
+function pubSwitch(tab) {
+  pubTab = tab; curTab = tab;
+  ['viewLeave', 'viewOverview', 'viewOT'].forEach(id => byId(id).classList.add('d-none'));
+  byId('viewPub').classList.remove('d-none');
+  [['pdaily', 'Daily', 'pubDaily'], ['pplan', 'Plan', 'pubPlan'], ['pleave', 'Leave', 'pubLeave']].forEach(([t, n, sec]) => {
+    const b = byId('btnPub' + n), on = t === tab; b.classList.toggle('btn-primary', on); b.classList.toggle('btn-outline-primary', !on); b.classList.toggle('active', on);
+    byId(sec).classList.toggle('d-none', !on);
+  });
+  byId('tPubDaily').textContent = L('ลงโอทีประจำวัน', 'Daily OT', '每日加班'); byId('tPubPlan').textContent = L('ลงแพลนโอที', 'OT plan', '加班计划'); byId('tPubLeave').textContent = L('ขอลา', 'Leave request', '请假申请');
+  syncRangeBar();
+  if (pubBuilt !== currentLang) buildPub();
+  renderPubData();
+}
+function buildPub() {
+  pubBuilt = currentLang;
+  byId('pubDaily').innerHTML = `<div class="btn-group btn-group-sm mp-toggle mb-3" id="pdSubBtns"><button class="btn btn-primary" data-s="form" onclick="pdSetSub('form')">＋ ${L('ลงข้อมูล', 'Enter data', '录入')}</button><button class="btn btn-outline-primary" data-s="log" onclick="pdSetSub('log')">${L('รายการที่ลงแล้ว', 'Entered list', '已录入列表')}</button></div>
+    <div id="pdForm" class="emp-card p-3">${DM_FORM.ot()}</div><div id="pdLog" class="d-none"></div>`;
+  DM_INIT.ot(); pdSetSub(pdSub);
+  byId('pubPlan').innerHTML = `${codeList()}<div class="row g-3"><div class="col-lg-7"><div class="emp-card p-3"><div id="calBox"></div>
+      <div class="small mt-2 d-flex flex-wrap gap-3 text-muted"><span><span style="display:inline-block;width:12px;height:12px;background:#dcfce7;border:1px solid #86efac;border-radius:3px"></span> ${L('ลงแพลนได้ (ศ./ส./อา.)', 'Open (Fri/Sat/Sun)', '可录入（周五/六/日）')}</span><span><span style="display:inline-block;width:12px;height:12px;background:#fed7aa;border-radius:3px"></span> ${L('วันหยุดที่เพิ่มเอง', 'Custom holiday', '自定义假日')}</span><span><span style="display:inline-block;width:12px;height:12px;background:rgba(128,128,128,.2);border-radius:3px"></span> ${L('ไม่เปิดให้ลง', 'Not open', '不开放')}</span></div></div></div>
+    <div class="col-lg-5"><div class="emp-card p-3" id="calDay"></div></div></div>`;
+  byId('pubLeave').innerHTML = `${codeList()}<div class="emp-card p-3" style="max-width:760px"><h6 class="fw-bold mb-3"><i class="bi bi-envelope-paper"></i> ${L('แบบฟอร์มขอลา', 'Leave request form', '请假申请表')}</h6>
+    <div id="lrOk"></div><div class="row g-2">
+    <div class="col-md-4"><label class="form-label small mb-0">${L('รหัสพนักงาน', 'Employee code', '工号')}</label><input id="lrCode" list="empCodes" class="form-control form-control-sm" autocomplete="off" oninput="lookupName(this,'lrName');lrCalc()"><div id="lrName" class="small fw-bold"></div></div>
+    <div class="col-md-4"><label class="form-label small mb-0">${L('ประเภทวันลา', 'Leave type', '请假类别')}</label><select id="lrType" class="form-select form-select-sm">${Object.keys(LEAVE_LABELS).map(k => `<option value="${k}">${lvName(k)}</option>`).join('')}</select></div>
+    <div class="col-md-4"><label class="form-label small mb-0">${L('วันที่ลา', 'Leave date', '请假日期')}</label><input type="date" id="lrDate" class="form-control form-control-sm" onchange="lrCalc()"></div>
+    <div class="col-12"><div class="btn-group btn-group-sm mp-toggle" id="lrMode"><button class="btn btn-primary" data-a="1" onclick="lrSetMode(true)">${L('ลาทั้งวัน', 'All day', '全天')}</button><button class="btn btn-outline-primary" data-a="0" onclick="lrSetMode(false)">${L('เลือกช่วงเวลา', 'By time', '按时间段')}</button></div></div>
+    <div class="col-md-4" id="lrEndW"><label class="form-label small mb-0">${L('ถึงวันที่ (ถ้าลาหลายวัน)', 'Until (multi-day)', '至（多天）')}</label><input type="date" id="lrDate2" class="form-control form-control-sm" onchange="lrCalc()"></div>
+    <div class="col-md-4 d-none" id="lrFromW"><label class="form-label small mb-0">${L('ตั้งแต่เวลา', 'From', '开始时间')}</label><input type="time" id="lrFrom" class="form-control form-control-sm" onchange="lrCalc()"></div>
+    <div class="col-md-4 d-none" id="lrToW"><label class="form-label small mb-0">${L('ถึงเวลา', 'To', '结束时间')}</label><input type="time" id="lrTo" class="form-control form-control-sm" onchange="lrCalc()"></div>
+    <div class="col-md-4"><label class="form-label small mb-0">${L('รวม (ชม.)', 'Total (h)', '合计(小时)')}</label><input id="lrHours" class="form-control form-control-sm" readonly></div>
+    <div class="col-12"><label class="form-label small mb-0">${L('เหตุผลในการลา', 'Reason', '请假原因')}</label><textarea id="lrReason" rows="2" class="form-control form-control-sm"></textarea></div>
+    <div class="col-12"><label class="form-label small mb-0">${L('แนบหลักฐานการลา (รูป/PDF สูงสุด 3 ไฟล์ ไฟล์ละไม่เกิน 5 MB)', 'Evidence (image/PDF, up to 3 files, 5 MB each)', '附上凭证（图片/PDF，最多3个，每个不超过5MB）')}</label><input type="file" id="lrFiles" class="form-control form-control-sm" accept="image/*,.pdf" multiple></div></div>
+    <button class="btn btn-success btn-sm mt-3" onclick="lrSubmit()"><i class="bi bi-send"></i> ${L('ส่งคำร้องขอลา', 'Submit request', '提交申请')}</button></div>`;
+  byId('lrDate').value = nowBkk();
+}
+function renderPubData() { if (!byId('pubPlan').innerHTML) return; calRender(); calDayRender(); if (pdSub === 'log') renderPdLog(); }
+
+/* ----- daily OT: form | list ----- */
+function pdSetSub(v) {
+  pdSub = v; byId('pdSubBtns').querySelectorAll('button').forEach(b => { const on = b.dataset.s === v; b.classList.toggle('btn-primary', on); b.classList.toggle('btn-outline-primary', !on); });
+  byId('pdForm').classList.toggle('d-none', v !== 'form'); byId('pdLog').classList.toggle('d-none', v !== 'log'); if (v === 'log') renderPdLog();
+}
+function pdStep(n) { pdA = addDays(pdA || nowBkk(), n); renderPdLog(); }
+function renderPdLog() {
+  if (!pdA) pdA = nowBkk();
+  const rows = otRows.filter(r => r.ot_date === pdA).sort((a, b) => otWho(a).name.localeCompare(otWho(b).name)), ppl = new Set(rows.map(r => otWho(r).key)).size;
+  byId('pdLog').innerHTML = `<div class="emp-card p-3"><div class="d-flex flex-wrap align-items-center gap-2 mb-2"><div class="btn-group btn-group-sm"><button class="btn btn-outline-secondary" onclick="pdStep(-1)"><i class="bi bi-chevron-left"></i></button><input type="date" class="form-control form-control-sm" style="width:auto;border-radius:0" value="${pdA}" onchange="pdA=this.value||pdA;renderPdLog()"><button class="btn btn-outline-secondary" onclick="pdStep(1)"><i class="bi bi-chevron-right"></i></button></div><span class="fw-bold">${fmtD(pdA)}</span><span class="wk-lbl">${weekLabel(pdA)}</span></div>` +
+    (rows.length ? `<div class="wk-lbl mb-2">${L(`ลงแล้ว ${rows.length} รายการ · ${ppl} คน`, `${rows.length} records · ${ppl} people`, `已录入 ${rows.length} 条 · ${ppl} 人`)}</div><div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0"><thead class="table-light"><tr><th>${L('รหัส', 'ID', '工号')}</th><th>${L('ชื่อ', 'Name', '姓名')}</th><th>${L('กะ', 'Shift', '班别')}</th><th>${L('ประเภทวัน', 'Day type', '日期类型')}</th><th class="text-end">h</th><th>${L('หมายเหตุ', 'Note', '备注')}</th></tr></thead><tbody>` +
+      rows.map(r => { const w = otWho(r); return `<tr><td>${xE(w.code)}</td><td>${xE(w.name)}</td><td>${xE(r.shift || '')}</td><td>${xE(otT(dayKind(r.day_type)))}</td><td class="text-end fw-bold">${n2(Number(r.ot_hours) || 0)}</td><td class="small">${xE(r.note || '')}</td></tr>`; }).join('') + '</tbody></table></div>'
+      : `<div class="text-muted p-2">${L('วันนี้ยังไม่มีใครลง OT', 'No OT entered for this day yet', '当日暂无加班记录')}</div>`) + '</div>';
+}
+
+/* ----- OT plan: calendar (Fri / Sat / Sun + custom holidays are clickable) ----- */
+function calGo(n) { calM += n; if (calM < 1) { calM = 12; calY--; } if (calM > 12) { calM = 1; calY++; } calRender(); }
+function calRender() {
+  if (!calY) { const n = nowBkk(); calY = +n.slice(0, 4); calM = +n.slice(5, 7); }
+  const ym = `${calY}-${p2(calM)}`, start = mondayOf(ym + '-01'), end = addDays(mondayOf(new Date(Date.UTC(calY, calM, 0)).toISOString().slice(0, 10)), 6), today = nowBkk(), cnt = new Map();
+  planRows.forEach(r => { if (r.plan_date >= start && r.plan_date <= end && Number(r.plan_hours) > 0) cnt.set(r.plan_date, (cnt.get(r.plan_date) || 0) + 1); });
+  let h = `<div class="d-flex align-items-center justify-content-between mb-2"><button class="btn btn-sm btn-outline-secondary" onclick="calGo(-1)"><i class="bi bi-chevron-left"></i></button><b>${MONTHS()[calM - 1]} ${currentLang === 'th' ? calY + 543 : calY}</b><button class="btn btn-sm btn-outline-secondary" onclick="calGo(1)"><i class="bi bi-chevron-right"></i></button></div><table class="cal"><thead><tr><th class="wk-lbl">${L('สป.', 'Wk', '周')}</th>${WDM().map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>`;
+  for (let w = start; w <= end; w = addDays(w, 7)) {
+    h += `<tr><td class="wk wk-lbl">${weekInfo(w).no}</td>`;
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(w, i), open = planOpen(d), k = holKind(d), bg = open ? (k === 'custom' ? '#fed7aa' : '') : '', n = cnt.get(d);
+      h += `<td><button type="button" class="dc${open ? '' : ' off'}${d.slice(0, 7) !== ym ? ' out' : ''}${d === calSel ? ' sel' : ''}${d === today ? ' today' : ''}" ${open ? `onclick="calPick('${d}')"` : 'disabled'} ${bg ? `style="background:${bg}"` : ''} title="${xE((customHols.find(x => x.holiday_date === d) || {}).name || '')}"><b>${+d.slice(8, 10)}</b>${n ? `<span class="n">${n}</span>` : ''}</button></td>`;
+    }
+    h += '</tr>';
+  }
+  byId('calBox').innerHTML = h + '</tbody></table>';
+}
+function calPick(d) { calSel = d; calRender(); calDayRender(); byId('calDay').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+function calDayRender() {
+  const box = byId('calDay'); if (!calSel) { box.innerHTML = `<div class="text-muted small">${L('แตะวันที่ในปฏิทิน (ศุกร์/เสาร์/อาทิตย์ หรือวันหยุดที่เพิ่มเอง) เพื่อลงแพลน OT ของวันนั้น', 'Tap a day in the calendar (Fri/Sat/Sun or a custom holiday) to enter its OT plan', '点击日历中的日期（周五/六/日或自定义假日）录入当天加班计划')}</div>`; return; }
+  const d = calSel, ch = customHols.find(x => x.holiday_date === d), list = planRows.filter(r => r.plan_date === d && Number(r.plan_hours) > 0).sort((a, b) => otWho(a).name.localeCompare(otWho(b).name));
+  box.innerHTML = `<div class="fw-bold">${fmtD(d)} <span class="text-muted">${WDM()[(dow(d) + 6) % 7]}</span>${ch ? ` <span class="badge" style="background:#fed7aa;color:#7c2d12">${xE(ch.name || '')}</span>` : ''}</div><div class="wk-lbl mb-2">${weekLabel(d)}</div>` +
+    (list.length ? `<div class="table-responsive mb-2"><table class="table table-sm align-middle mb-0"><tbody>${list.map(r => { const w = otWho(r); return `<tr><td class="small">${xE(w.code)}<br><b>${xE(w.name)}</b></td><td class="small">${xE(r.shift || '')}</td><td class="fw-bold text-end">${n2(Number(r.plan_hours))}h</td><td class="small">${xE(r.ot_type || '')}</td><td><button class="btn btn-sm btn-outline-danger py-0" onclick="calDel(${r.id})"><i class="bi bi-x"></i></button></td></tr>`; }).join('')}</tbody></table></div>` : `<div class="wk-lbl mb-2">${L('ยังไม่มีใครลงแพลนวันนี้', 'No plan entered for this day yet', '当天暂无计划')}</div>`) +
+    `<hr class="my-2"><div class="row g-2"><div class="col-6"><label class="form-label small mb-0">${L('รหัสพนักงาน', 'Employee code', '工号')}</label><input id="cdCode" list="empCodes" class="form-control form-control-sm" autocomplete="off" oninput="calLookup()"><div id="cdName" class="small fw-bold"></div></div>
+    <div class="col-6"><label class="form-label small mb-0">${L('กะ', 'Shift', '班别')}</label><input id="cdShift" class="form-control form-control-sm"></div>
+    <div class="col-4"><label class="form-label small mb-0">${L('ชั่วโมง OT', 'OT hours', '加班小时')}</label><input type="number" id="cdH" step="0.5" min="0" class="form-control form-control-sm"></div>
+    <div class="col-4"><label class="form-label small mb-0">${L('ประเภท OT', 'OT type', '加班类型')}</label><input id="cdType" value="Usual" class="form-control form-control-sm"></div>
+    <div class="col-4"><label class="form-label small mb-0">${L('หมายเหตุ', 'Note', '备注')}</label><input id="cdNote" class="form-control form-control-sm"></div></div>
+    <button class="btn btn-success btn-sm mt-2" onclick="calSave()">＋ ${L('เพิ่มแพลนวันนี้', 'Add plan for this day', '添加当天计划')}</button>`;
+}
+function calLookup() { const e = lookupName(byId('cdCode'), 'cdName'); if (e) { const h = planHoursFor(e.schedule, calSel); if (h && !byId('cdH').value) byId('cdH').value = h; } }
+async function calSave() {
+  const e = empByCode(byId('cdCode').value), h = num(byId('cdH').value);
+  if (!e || h == null || h <= 0) return alert(L('กรอกรหัสพนักงานที่ถูกต้องและชั่วโมง OT (> 0)', 'Enter a valid employee code and OT hours (> 0)', '请输入有效工号和加班小时(>0)'));
+  await formRun(() => savePlan([{ employee_id: e.startRow, emp_code: e.empId, emp_name: e.name, shift: T(byId('cdShift').value), plan_date: calSel, plan_hours: h, ot_type: T(byId('cdType').value), note: T(byId('cdNote').value), source: 'web' }]));
+}
+async function calDel(id) {
+  if (!confirm(L('ลบแพลนนี้?', 'Delete this plan?', '删除此计划？'))) return;
+  try { await supabaseClient.from('mp_ot_plans').delete().eq('id', id).then(chk); await reloadAll(); } catch (err) { alert('Error: ' + (err.message || err)); }
+}
+
+/* ----- leave request (sent to mp_leave_requests; only the admin can read it) ----- */
+function lrSetMode(all) {
+  byId('lrMode').querySelectorAll('button').forEach(b => { const on = (b.dataset.a === '1') === all; b.classList.toggle('btn-primary', on); b.classList.toggle('btn-outline-primary', !on); });
+  byId('lrEndW').classList.toggle('d-none', !all); byId('lrFromW').classList.toggle('d-none', all); byId('lrToW').classList.toggle('d-none', all); lrCalc();
+}
+const lrAll = () => byId('lrMode').querySelector('.btn-primary').dataset.a === '1';
+function lrCalc() {
+  const e = empByCode(byId('lrCode').value), d1 = byId('lrDate').value; let h = 0;
+  if (lrAll()) { const d2 = byId('lrDate2').value || d1; if (d1 && d2 >= d1) for (let d = d1; d <= d2; d = addDays(d, 1)) if (!e || !isOffDay(e.schedule, d)) h += HOURS_PER_DAY; }
+  else { const a = byId('lrFrom').value, b = byId('lrTo').value, m = x => +x.slice(0, 2) * 60 + +x.slice(3, 5); if (a && b && m(b) > m(a)) h = Math.round((m(b) - m(a)) / 60 * 100) / 100; }
+  byId('lrHours').value = h ? String(h) : ''; return h;
+}
+async function lrSubmit() {
+  const e = empByCode(byId('lrCode').value), all = lrAll(), d1 = byId('lrDate').value, d2 = all ? (byId('lrDate2').value || d1) : d1, from = byId('lrFrom').value, to = byId('lrTo').value, reason = byId('lrReason').value.trim(), h = lrCalc(), files = [...byId('lrFiles').files];
+  if (!e) return alert(L('ไม่พบรหัสพนักงานนี้', 'Employee code not found', '未找到该工号'));
+  if (!d1 || d2 < d1) return alert(L('เลือกวันที่ลาให้ถูกต้อง', 'Pick a valid leave date', '请选择正确的请假日期'));
+  if (!(h > 0)) return alert(all ? L('ช่วงวันที่ที่เลือกเป็นวันหยุดทั้งหมด', 'All selected days are days off', '所选日期均为休息日') : L('เลือกเวลาเริ่มและสิ้นสุดให้ถูกต้อง', 'Pick a valid from / to time', '请选择正确的开始/结束时间'));
+  if (!reason) return alert(L('กรอกเหตุผลในการลา', 'Please enter the reason', '请填写请假原因'));
+  if (files.length > 3 || files.some(f => f.size > 5 * 1048576)) return alert(L('แนบได้สูงสุด 3 ไฟล์ ไฟล์ละไม่เกิน 5 MB', 'Max 3 files, 5 MB each', '最多3个文件，每个不超过5MB'));
+  showLoader(true, L('กำลังส่งคำร้อง...', 'Sending...', '正在提交...'));
+  try {
+    const evidence = [], uid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2);
+    for (const f of files) {
+      const path = `${uid}/${f.name.replace(/[^\w.\-]+/g, '_')}`, up = await supabaseClient.storage.from('mp-evidence').upload(path, f, { contentType: f.type || undefined });
+      if (up.error) throw up.error; evidence.push({ name: f.name, url: supabaseClient.storage.from('mp-evidence').getPublicUrl(path).data.publicUrl });
+    }
+    const { error } = await supabaseClient.from('mp_leave_requests').insert({ employee_id: e.startRow, emp_code: e.empId, emp_name: e.name, leave_key: byId('lrType').value, leave_date: d1, leave_end: d2, all_day: all, time_from: all ? null : from, time_to: all ? null : to, hours: h, reason, evidence, status: 'pending' });
+    if (error) throw error;
+    byId('lrOk').innerHTML = `<div class="alert alert-success py-2 small"><b>${L('ส่งคำร้องขอลาแล้ว — รอแอดมินอนุมัติ', 'Request sent — waiting for admin approval', '申请已提交 — 等待管理员审批')}</b><br>${xE(e.empId)} ${xE(e.name)} · ${xE(lvName(byId('lrType').value))} · ${fmtD(d1)}${d2 !== d1 ? ' – ' + fmtD(d2) : ''} · ${all ? L('ทั้งวัน', 'All day', '全天') : from + '–' + to} · ${h} h</div>`;
+    ['lrCode', 'lrReason', 'lrFiles', 'lrHours', 'lrFrom', 'lrTo', 'lrDate2'].forEach(id => (byId(id).value = '')); byId('lrName').textContent = '';
+  } catch (err) { alert('Error: ' + (err.message || err) + '\n' + L('(ถ้าเพิ่งตั้งระบบ ต้องรัน manpower-leave-requests.sql ใน Supabase ก่อน)', '(first run manpower-leave-requests.sql in Supabase)', '（请先在 Supabase 运行 manpower-leave-requests.sql）')); }
+  showLoader(false);
+}
+
+/* ----- admin: leave requests (read through PIN-checked RPCs) ----- */
+async function loadReqs() { try { reqRows = (await supabaseClient.rpc('mp_req_list', { p_pin: ACCESS_PIN }).then(chk)) || []; reqErr = ''; } catch (e) { reqRows = []; reqErr = e.message || String(e); } }
+const reqLbl = () => L('คำร้องขอลา', 'Leave requests', '请假申请') + (reqRows.filter(r => r.status === 'pending').length ? ` (${reqRows.filter(r => r.status === 'pending').length})` : '');
+async function reqDecide(id, st) {
+  const r = reqRows.find(x => x.id === id); if (!r) return;
+  if (st === 'approved') {
+    const emp = employeesData.find(e => String(e.empId).trim().toLowerCase() === String(r.emp_code).trim().toLowerCase()), lf = emp && emp.leaves[r.leave_key];
+    if (!lf) return alert(L('ไม่พบพนักงาน / โควต้าของประเภทลานี้', 'Employee or quota row not found for this leave type', '未找到该员工或该假别额度'));
+    const days = []; if (r.all_day) { for (let d = r.leave_date; d <= (r.leave_end || r.leave_date); d = addDays(d, 1)) if (!isOffDay(emp.schedule, d)) days.push([d, HOURS_PER_DAY]); } else days.push([r.leave_date, Number(r.hours)]);
+    if (!days.length) return alert(L('ไม่มีวันทำงานในช่วงที่ขอ', 'No working day in the requested range', '所选范围内没有工作日'));
+    if (!confirm(L(`อนุมัติและบันทึกการลา ${days.length} วัน (${days.reduce((a, x) => a + x[1], 0)} ชม.) ให้ ${emp.name}?`, `Approve and record ${days.length} day(s) (${days.reduce((a, x) => a + x[1], 0)} h) for ${emp.name}?`, `批准并为 ${emp.name} 记录 ${days.length} 天 (${days.reduce((a, x) => a + x[1], 0)} 小时)？`))) return;
+    showLoader(true, L('กำลังบันทึก...', 'Saving...')); const done = [];
+    try {
+      for (const [d, h] of days) { const log = await supabaseClient.from('mp_leave_logs').insert({ employee_id: emp.startRow, leave_key: r.leave_key, label: lf.label || LEAVE_LABELS[r.leave_key], leave_date: d, hours: h, reason: r.reason || null, source: 'request' }).select().single().then(chk); done.push([log.id, h]); await addUsed(lf.row, h / HOURS_PER_DAY); }
+    } catch (err) { for (const [lid, h] of done) { await supabaseClient.from('mp_leave_logs').delete().eq('id', lid); await addUsed(lf.row, -h / HOURS_PER_DAY).catch(() => {}); } showLoader(false); return alert('Error: ' + (err.message || err)); }
+  } else { showLoader(true, '...'); }
+  try { await supabaseClient.rpc('mp_req_set', { p_pin: ACCESS_PIN, p_id: id, p_status: st, p_note: null }).then(chk); await reloadAll(); } catch (err) { alert('Error: ' + (err.message || err)); }
+  showLoader(false);
+}
+async function reqDel(id) {
+  if (!confirm(L('ลบคำร้องนี้?', 'Delete this request?', '删除此申请？'))) return;
+  try { await supabaseClient.rpc('mp_req_del', { p_pin: ACCESS_PIN, p_id: id }).then(chk); await reloadAll(); } catch (err) { alert('Error: ' + (err.message || err)); }
+}
 </script>
 </body>
 </html>
