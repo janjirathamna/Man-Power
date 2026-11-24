@@ -149,6 +149,7 @@
 
     <div class="d-flex align-items-center gap-2 flex-wrap">
       <div class="btn-group mp-toggle" role="group">
+        <button type="button" class="btn btn-outline-primary btn-sm d-none" id="btnTabDash" onclick="switchTab('dash')"><i class="bi bi-speedometer2"></i> แดชบอร์ด</button>
         <button type="button" class="btn btn-primary btn-sm active" id="btnTabCards" onclick="switchTab('cards')">
           <i class="bi bi-grid-fill"></i> <span data-i18n="tabCards">รายบุคคล</span>
         </button>
@@ -249,6 +250,7 @@
   </div>
 
   <!-- แท็บ: Log -->
+  <div id="viewDash" class="d-none"></div>
   <div id="viewLog" class="d-none"></div>
 
   <!-- แท็บ: ภาพรวมเปรียบเทียบ -->
@@ -1066,7 +1068,7 @@ async function callGasApi(action, payload) {
   function switchTab(tab) {
     if (!isUnlocked()) { pubSwitch(['pdaily', 'pplan', 'pleave'].includes(tab) ? tab : pubTab); return; }
     curTab = tab; document.getElementById('viewPub').classList.add('d-none');
-    [['cards', 'Cards'], ['overview', 'Overview'], ['log', 'Log'], ['ot', 'Ot']].forEach(([t, n]) => {
+    [['dash', 'Dash'], ['cards', 'Cards'], ['overview', 'Overview'], ['log', 'Log'], ['ot', 'Ot']].forEach(([t, n]) => {
       const b = document.getElementById('btnTab' + n);
       b.classList.toggle('btn-primary', t === tab);
       b.classList.toggle('btn-outline-primary', t !== tab);
@@ -1076,7 +1078,9 @@ async function callGasApi(action, payload) {
     document.getElementById('viewOverview').classList.toggle('d-none', tab !== 'overview');
     document.getElementById('viewOT').classList.toggle('d-none', tab !== 'ot');
     document.getElementById('viewLog').classList.toggle('d-none', tab !== 'log');
+    document.getElementById('viewDash').classList.toggle('d-none', tab !== 'dash');
     syncRangeBar();
+    if (tab === 'dash') renderDash();
     if (tab === 'log') renderLogView();
     if (tab === 'cards') renderCards();
     if (tab === 'overview') renderOverview();
@@ -1192,7 +1196,7 @@ function applyMode() {
   i18n.th.appTitle = u ? 'แมนพาวเวอร์' : 'OT'; i18n.en.appTitle = u ? 'ManPower' : 'OT'; i18n.zh.appTitle = u ? '人力管理' : '加班';
   document.querySelectorAll('[data-i18n="appTitle"]').forEach(el => el.innerText = i18n[currentLang].appTitle);
   document.title = i18n[currentLang].appTitle;
-  ['btnTabCards', 'btnTabOverview', 'btnSettingsTop', 'btnTabOt', 'btnTabLog', 'exportMenu'].forEach(id => byId(id).classList.toggle('d-none', !u));
+  ['btnTabDash', 'btnTabCards', 'btnTabOverview', 'btnSettingsTop', 'btnTabOt', 'btnTabLog', 'exportMenu'].forEach(id => byId(id).classList.toggle('d-none', !u));
   ['btnPubDaily', 'btnPubPlan', 'btnPubLeave'].forEach(id => byId(id).classList.toggle('d-none', u));
   byId('btnLock').innerHTML = u ? '<i class="bi bi-lock-fill"></i>' : '<i class="bi bi-unlock-fill"></i>';
   byId('btnLock').title = u ? 'Lock' : 'Unlock (PIN)';
@@ -1250,7 +1254,8 @@ async function refreshLogs() {
   if (u) await loadReqs();
   if (!otA) otA = isUnlocked() ? (otRows.reduce((m, r) => r.ot_date > m ? r.ot_date : m, '') || nowBkk()) : nowBkk();
 }
-function renderAllViews() { if (isUnlocked()) { renderCards(); renderOverview(); if (curTab === 'log') renderLogView(); } else renderPubData(); if (!byId('viewOT').classList.contains('d-none')) renderOT(); }
+let dashInit = false;
+function renderAllViews() { if (isUnlocked()) { renderCards(); renderOverview(); renderDash(); if (!dashInit) { dashInit = true; switchTab('dash'); } if (curTab === 'log') renderLogView(); } else renderPubData(); if (!byId('viewOT').classList.contains('d-none')) renderOT(); }
 async function reloadAll() { employeesData = await loadLeaveData(isUnlocked()); await refreshLogs(); renderAllViews(); }
 
 /* ---------- Add Data modal ---------- */
@@ -1988,6 +1993,32 @@ function renderSummaryView() {
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.raw} h` } } }, scales: { y: { beginAtZero: true, ticks: { font: { size: 10 }, precision: 0 } }, x: { ticks: { font: { size: 10 }, maxRotation: 0 } } } } }));
   });
 }
+
+/* ===== ADMIN DASHBOARD: pending work · today's / upcoming OT plans · shortcuts ===== */
+function goLog(kind) { switchTab('log'); setLogKind(kind); }
+function dashKpi(icon, label, val, sub, act, tone) {
+  return `<div class="col-6 col-lg-3"><button type="button" class="emp-card p-3 w-100 text-start border-0" style="border-left:5px solid ${tone} !important" onclick="${act}"><div class="small text-muted"><i class="bi ${icon}"></i> ${label}</div><div class="fs-2 fw-bold lh-1 my-1">${val}</div><div class="small text-muted">${sub}</div></button></div>`;
+}
+function renderDash() {
+  const box = byId('viewDash'); if (!box || !isUnlocked()) return;
+  const today = nowBkk(), end = addDays(today, 6), act = r => Number(r.plan_hours) > 0;
+  const pend = reqRows.filter(r => r.status === 'pending');
+  const pToday = planRows.filter(r => r.plan_date === today && act(r)), pWeek = planRows.filter(r => r.plan_date >= today && r.plan_date <= end && act(r));
+  const hSum = a => n2(a.reduce((t, r) => t + (Number(r.plan_hours) || 0), 0)), otToday = otRows.filter(r => r.ot_date === today);
+  const lb = byId('btnTabLog'); if (lb) lb.innerHTML = '<i class="bi bi-journal-text"></i> Log' + (pend.length ? ` <span class="badge bg-danger">${pend.length}</span>` : '');
+  const reqList = reqErr ? `<div class="text-danger small">${xE(reqErr)}</div>` : pend.length ? pend.slice(0, 8).map(r => `<div class="border rounded-3 p-2 mb-2"><div class="d-flex justify-content-between gap-2 flex-wrap"><div><b>${xE(r.emp_name)}</b> <span class="text-muted small">${xE(r.emp_code)}</span> <span class="badge bg-light text-dark border">${xE(lvName(r.leave_key))}</span><div class="small">${fmtD(r.leave_date)}${r.leave_end && r.leave_end !== r.leave_date ? ' – ' + fmtD(r.leave_end) : ''} · ${r.all_day ? L('ทั้งวัน', 'All day', '全天') : String(r.time_from || '').slice(0, 5) + '–' + String(r.time_to || '').slice(0, 5)} · <b>${r.hours}h</b></div>${r.reason ? `<div class="small text-muted">${xE(r.reason)}</div>` : ''}${(r.evidence || []).map(f => `<a class="small me-2" href="${xE(f.url)}" target="_blank" rel="noopener"><i class="bi bi-paperclip"></i>${xE(f.name)}</a>`).join('')}</div><div class="d-flex gap-1 align-items-start"><button class="btn btn-sm btn-success" onclick="reqDecide(${r.id},'approved')"><i class="bi bi-check-lg"></i> ${L('อนุมัติ', 'Approve', '批准')}</button><button class="btn btn-sm btn-outline-secondary" onclick="reqDecide(${r.id},'rejected')"><i class="bi bi-x-lg"></i> ${L('ไม่อนุมัติ', 'Reject', '拒绝')}</button></div></div></div>`).join('') + (pend.length > 8 ? `<button class="btn btn-sm btn-link" onclick="goLog('req')">${L('ดูทั้งหมด', 'View all', '查看全部')} (${pend.length})</button>` : '') : `<div class="text-muted small"><i class="bi bi-check-circle text-success"></i> ${L('ไม่มีคำร้องรออนุมัติ', 'No pending requests', '没有待审批申请')}</div>`;
+  const days = Array.from({ length: 7 }, (_, i) => addDays(today, i)), planList = days.map(d => {
+    const rs = pWeek.filter(r => r.plan_date === d), k = holKind(d), nm = holName(d); if (!rs.length && !k) return '';
+    return `<div class="mb-2"><div class="fw-bold small" style="background:${HOL_BG[k] || '#f3f4f6'};color:#1f2937;border-radius:6px;padding:2px 8px">${fmtD(d)} ${WDM()[(dow(d) + 6) % 7]}${d === today ? ' · ' + L('วันนี้', 'Today', '今天') : ''}${nm ? ' · ' + xE(nm.split(' ').slice(0, 4).join(' ')) : ''} <span class="float-end">${rs.length ? rs.length + ' ' + L('คน', 'ppl', '人') + ' · ' + hSum(rs) + 'h' : '—'}</span></div>` +
+      rs.map(r => { const w = otWho(r); return `<div class="small ps-2 py-1 border-bottom">${xE(w.name)} <span class="text-muted">${xE(r.shift || '')}</span> <b class="float-end">${n2(Number(r.plan_hours))}h</b></div>`; }).join('') + '</div>'; }).join('') || `<div class="text-muted small">${L('ยังไม่มีแพลน OT ใน 7 วันข้างหน้า', 'No OT plans in the next 7 days', '未来7天暂无加班计划')}</div>`;
+  const qa = (icon, label, act, tone = 'outline-primary') => `<button class="btn btn-${tone} text-start" onclick="${act}"><i class="bi ${icon}"></i> ${label}</button>`;
+  box.innerHTML = `<div class="d-flex justify-content-between align-items-end mb-3 flex-wrap"><div><h5 class="fw-bold mb-0"><i class="bi bi-speedometer2"></i> ${L('แดชบอร์ดแอดมิน', 'Admin dashboard', '管理员面板')}</h5><div class="small text-muted">${fmtD(today)} ${wdName(today)}</div></div><button class="btn btn-sm btn-outline-secondary" onclick="reloadAll()"><i class="bi bi-arrow-clockwise"></i> ${L('รีเฟรช', 'Refresh', '刷新')}</button></div>` +
+    `<div class="row g-3 mb-3">${dashKpi('bi-envelope-paper', L('คำร้องลารออนุมัติ', 'Pending leave', '待审批请假'), pend.length, L('กดเพื่อไปตรวจสอบ', 'Click to review', '点击查看'), "goLog('req')", pend.length ? '#dc2626' : '#16a34a')}${dashKpi('bi-calendar-check', L('แพลน OT วันนี้', 'OT plan today', '今日加班计划'), pToday.length, hSum(pToday) + ' h', "goLog('plan')", '#2563eb')}${dashKpi('bi-calendar-week', L('แพลน OT 7 วัน', 'OT plan 7 days', '7天加班计划'), pWeek.length, hSum(pWeek) + ' h', "goLog('plan')", '#7c3aed')}${dashKpi('bi-clock-history', L('OT ที่ลงวันนี้', 'OT logged today', '今日已录加班'), otToday.length, n2(otToday.reduce((t, r) => t + (Number(r.ot_hours) || 0), 0)) + ' h', "goLog('ot')", '#ea580c')}</div>` +
+    `<div class="row g-3"><div class="col-lg-7"><div class="emp-card p-3 mb-3"><h6 class="fw-bold"><i class="bi bi-inbox"></i> ${L('งานรออนุมัติ', 'Needs approval', '待办审批')} (${pend.length})</h6>${reqList}</div>` +
+    `<div class="emp-card p-3"><h6 class="fw-bold"><i class="bi bi-lightning-charge"></i> ${L('ทางลัด', 'Shortcuts', '快捷入口')}</h6><div class="d-grid gap-2" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">${qa('bi-pencil-square', L('จัดการแพลน OT (แก้ไข/ลบ)', 'Manage OT plans (edit/delete)', '管理加班计划'), "goLog('plan')", 'primary')}${qa('bi-list-check', L('OT log (แก้ไข/ลบ)', 'OT log (edit/delete)', '加班记录'), "goLog('ot')")}${qa('bi-journal-text', L('ประวัติการลา', 'Leave history', '请假记录'), "goLog('leave')")}${qa('bi-grid-fill', L('รายบุคคล / โควต้า', 'Per person / quota', '个人 / 额度'), "switchTab('cards')")}${qa('bi-bar-chart-fill', L('ภาพรวมเปรียบเทียบ', 'Overview', '总览'), "switchTab('overview')")}${qa('bi-clock-history', L('รายงาน OT', 'OT reports', '加班报表'), "switchTab('ot')")}${qa('bi-gear', L('ตั้งค่า (พนักงาน/วันหยุด)', 'Settings (staff/holidays)', '设置'), "byId('btnSettingsTop').click()", 'outline-secondary')}</div></div></div>` +
+    `<div class="col-lg-5"><div class="emp-card p-3"><h6 class="fw-bold"><i class="bi bi-calendar3"></i> ${L('แพลน OT 7 วันข้างหน้า', 'OT plans – next 7 days', '未来7天加班计划')}</h6>${planList}<button class="btn btn-sm btn-link px-0" onclick="goLog('plan')">${L('จัดการแพลนทั้งหมด →', 'Manage all plans →', '管理全部计划 →')}</button></div></div></div>`;
+}
+
 let planEditId = null;
 function setLogKind(k) { logKind = k; planEditId = null; renderLogView(); }
 function planLogEdit(id) { planEditId = id; renderLogView(); }
@@ -2166,7 +2197,7 @@ const codeList = () => `<datalist id="empCodes">${employeesData.map(e => `<optio
 
 function pubSwitch(tab) {
   pubTab = tab; curTab = tab;
-  ['viewLeave', 'viewOverview', 'viewOT'].forEach(id => byId(id).classList.add('d-none'));
+  ['viewLeave', 'viewOverview', 'viewOT', 'viewDash', 'viewLog'].forEach(id => byId(id).classList.add('d-none'));
   byId('viewPub').classList.remove('d-none');
   [['pdaily', 'Daily', 'pubDaily'], ['pplan', 'Plan', 'pubPlan'], ['pleave', 'Leave', 'pubLeave']].forEach(([t, n, sec]) => {
     const b = byId('btnPub' + n), on = t === tab; b.classList.toggle('btn-primary', on); b.classList.toggle('btn-outline-primary', !on); b.classList.toggle('active', on);
