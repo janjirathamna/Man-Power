@@ -117,7 +117,10 @@
         width: 20%;
       }
     }
-  </style>
+  .att-tbl td{cursor:pointer}.att-tbl .att-chk{width:1.6rem;height:1.6rem;cursor:pointer;margin:0}
+.att-tbl tr.att-on>td{background:#bbf7d0!important;box-shadow:none!important}
+.att-tbl tr.att-done>td{background:#e5e7eb!important;color:#6b7280!important;box-shadow:none!important;cursor:default}
+</style>
 </head>
 <body>
 
@@ -1111,6 +1114,8 @@ async function callGasApi(action, payload) {
     byId('searchInput').placeholder = L('ค้นหาชื่อ หรือ รหัสพนักงาน...', 'Search name or ID...');
     renderCards();
     renderOverview();
+    renderDash(); renderAtt();
+    if (!byId('viewLog').classList.contains('d-none') && typeof renderLogView === 'function') renderLogView();
     if (!isUnlocked()) pubSwitch(pubTab);
     if (!byId('viewOT').classList.contains('d-none')) renderOT();
     if (!byId('dataPanel').classList.contains('d-none')) dmRender();
@@ -2027,6 +2032,8 @@ function dashKpi(icon, label, val, sub, act, tone) {
   return `<div class="col-6 col-lg-3"><button type="button" class="emp-card p-3 w-100 text-start border-0" style="border-left:5px solid ${tone} !important" onclick="${act}"><div class="small text-muted"><i class="bi ${icon}"></i> ${label}</div><div class="fs-2 fw-bold lh-1 my-1">${val}</div><div class="small text-muted">${sub}</div></button></div>`;
 }
 function renderDash() {
+  const bd = byId('btnTabDash'), ba = byId('btnTabAtt');
+  if (bd) bd.innerHTML = '<i class="bi bi-speedometer2"></i> ' + L('แดชบอร์ด', 'Dashboard', '面板'); if (ba) ba.innerHTML = '<i class="bi bi-person-check"></i> ' + L('ลง OT ประจำวัน', 'Daily OT', '每日加班');
   const box = byId('viewDash'); if (!box || !isUnlocked()) return;
   const today = nowBkk(), end = addDays(today, 6), act = r => Number(r.plan_hours) > 0;
   const pend = reqRows.filter(r => r.status === 'pending');
@@ -2056,7 +2063,11 @@ function attSetSub(v) { attSub = v; attMsg = ''; renderAtt(); }
 function attTick(id, on) { on ? attSel.add(String(id)) : attSel.delete(String(id)); attCount(); }
 function attCount() {
   const n = attSel.size, b = byId('attSaveBtn'); if (b) { b.disabled = !n; b.innerHTML = `<i class="bi bi-save"></i> ${L('บันทึก', 'Save', '保存')} (${n} ${L('คน', 'ppl', '人')})`; }
-  document.querySelectorAll('#attBody tr[data-id]').forEach(tr => { if (!tr.classList.contains('att-done')) tr.style.background = attSel.has(tr.dataset.id) ? '#dcfce7' : ''; });
+  document.querySelectorAll('#attBody tr[data-id]').forEach(tr => { if (!tr.classList.contains('att-done')) tr.classList.toggle('att-on', attSel.has(tr.dataset.id)); });
+}
+function attRow(tr, ev) {
+  if (tr.classList.contains('att-done') || ev.target.closest('input[type=number]')) return;
+  const c = tr.querySelector('input[type=checkbox]'); if (ev.target !== c) c.checked = !c.checked; attTick(tr.dataset.id, c.checked);
 }
 function attAll(on) {
   const done = attDone(attDate); attSel.clear();
@@ -2099,10 +2110,10 @@ function renderAtt() {
       `<span class="small text-muted ms-auto">${L('บันทึกแล้ว', 'Saved', '已保存')} ${nDone}/${emps.length}</span><button id="attSaveBtn" class="btn btn-success btn-sm" onclick="attSave()" disabled></button></div>` +
       (attMsg ? `<div class="alert alert-success py-1 small mb-2"><i class="bi bi-check-circle"></i> ${xE(attMsg)}</div>` : '') +
       `<div class="small text-muted mb-1">${L('ติ๊กคนที่มาทำ OT แล้วกดบันทึกครั้งเดียว · แถวสีเทา = บันทึกแล้ว', 'Tick everyone who worked OT, then save once · grey rows = already saved', '勾选加班人员后一次保存 · 灰色=已保存')}</div>` +
-      `<div style="max-height:68vh;overflow:auto"><table class="table table-sm align-middle mb-0"><thead class="table-light" style="position:sticky;top:0;z-index:1"><tr><th style="width:40px"></th><th>${L('รหัส', 'ID', '工号')}</th><th>${L('ชื่อ', 'Name', '姓名')}</th><th style="width:100px">${L('ชั่วโมง', 'Hours', '小时')}</th><th>${L('สถานะ', 'Status', '状态')}</th></tr></thead><tbody id="attBody">` +
+      `<div style="max-height:68vh;overflow:auto"><table class="table align-middle mb-0 att-tbl"><thead class="table-light" style="position:sticky;top:0;z-index:1"><tr><th style="width:90px" class="text-center">${L('มาทำงาน', 'Worked', '出勤')}</th><th>${L('รหัส', 'ID', '工号')}</th><th>${L('ชื่อ', 'Name', '姓名')}</th><th style="width:100px">${L('ชั่วโมง', 'Hours', '小时')}</th><th>${L('สถานะ', 'Status', '状态')}</th></tr></thead><tbody id="attBody">` +
       emps.map(e => { const id = String(e.startRow), r = done.get(id), s = (e.empId + ' ' + e.name).toLowerCase();
-        return r ? `<tr data-id="${id}" data-s="${xE(s)}" class="att-done" style="background:#e9ecef;color:#6c757d"><td><input type="checkbox" class="form-check-input" checked disabled></td><td>${xE(e.empId)}</td><td>${xE(e.name)}</td><td>${n2(Number(r.ot_hours))}</td><td><i class="bi bi-check2-circle"></i> ${L('บันทึกแล้ว', 'Saved', '已保存')} · ${L('กะ', 'Shift', '班别')} ${xE(shiftNorm(r.shift) || '-')}</td></tr>`
-          : `<tr data-id="${id}" data-s="${xE(s)}"${attQ && !s.includes(attQ.trim().toLowerCase()) ? ' class="d-none"' : ''}${attSel.has(id) ? ' style="background:#dcfce7"' : ''}><td><input type="checkbox" class="form-check-input" ${attSel.has(id) ? 'checked' : ''} onchange="attTick('${id}', this.checked)"></td><td>${xE(e.empId)}</td><td>${xE(e.name)}</td><td><input id="attH_${id}" type="number" min="0.5" max="2" step="0.5" value="2" class="form-control form-control-sm" style="width:80px"></td><td class="text-muted small">—</td></tr>`; }).join('') + `</tbody></table></div></div>`;
+        return r ? `<tr data-id="${id}" data-s="${xE(s)}" class="att-done"><td class="text-center"><input type="checkbox" class="form-check-input att-chk" checked disabled></td><td>${xE(e.empId)}</td><td>${xE(e.name)}</td><td>${n2(Number(r.ot_hours))}</td><td><i class="bi bi-check2-circle"></i> ${L('บันทึกแล้ว', 'Saved', '已保存')} · ${L('กะ', 'Shift', '班别')} ${xE(shiftNorm(r.shift) || '-')}</td></tr>`
+          : `<tr data-id="${id}" data-s="${xE(s)}" onclick="attRow(this, event)" class="${attSel.has(id) ? 'att-on' : ''}${attQ && !s.includes(attQ.trim().toLowerCase()) ? ' d-none' : ''}"><td class="text-center"><input type="checkbox" class="form-check-input att-chk" ${attSel.has(id) ? 'checked' : ''}></td><td>${xE(e.empId)}</td><td>${xE(e.name)}</td><td><input id="attH_${id}" type="number" min="0.5" max="2" step="0.5" value="2" class="form-control form-control-sm" style="width:80px"></td><td class="text-muted small">—</td></tr>`; }).join('') + `</tbody></table></div></div>`;
   } else {
     const rs = otRows.filter(r => r.ot_date === attDate).sort((a, b) => otWho(a).name.localeCompare(otWho(b).name)), tot = rs.reduce((t, r) => t + (Number(r.ot_hours) || 0), 0);
     body = `<div class="emp-card p-3"><div class="small text-muted mb-2">${rs.length} ${L('คน', 'people', '人')} · ${n2(tot)} ${L('ชม.', 'h', '小时')}</div><table class="table table-sm align-middle mb-0"><thead class="table-light"><tr><th>${L('รหัส', 'ID', '工号')}</th><th>${L('ชื่อ', 'Name', '姓名')}</th><th>${L('กะ', 'Shift', '班别')}</th><th>${L('ประเภทวัน', 'Day type', '日期类型')}</th><th>${L('ชม.', 'h', '小时')}</th><th></th></tr></thead><tbody>` +
