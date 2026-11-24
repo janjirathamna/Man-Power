@@ -150,6 +150,7 @@
     <div class="d-flex align-items-center gap-2 flex-wrap">
       <div class="btn-group mp-toggle" role="group">
         <button type="button" class="btn btn-outline-primary btn-sm d-none" id="btnTabDash" onclick="switchTab('dash')"><i class="bi bi-speedometer2"></i> แดชบอร์ด</button>
+        <button type="button" class="btn btn-outline-primary btn-sm d-none" id="btnTabAtt" onclick="switchTab('att')"><i class="bi bi-person-check"></i> ลง OT ประจำวัน</button>
         <button type="button" class="btn btn-primary btn-sm active" id="btnTabCards" onclick="switchTab('cards')">
           <i class="bi bi-grid-fill"></i> <span data-i18n="tabCards">รายบุคคล</span>
         </button>
@@ -251,6 +252,7 @@
 
   <!-- แท็บ: Log -->
   <div id="viewDash" class="d-none"></div>
+  <div id="viewAtt" class="d-none"></div>
   <div id="viewLog" class="d-none"></div>
 
   <!-- แท็บ: ภาพรวมเปรียบเทียบ -->
@@ -1066,9 +1068,9 @@ async function callGasApi(action, payload) {
   }
 
   function switchTab(tab) {
-    if (!isUnlocked()) { pubSwitch(['pdaily', 'pplan', 'pleave'].includes(tab) ? tab : pubTab); return; }
+    if (!isUnlocked()) { pubSwitch(['pplan', 'pleave'].includes(tab) ? tab : pubTab); return; }
     curTab = tab; document.getElementById('viewPub').classList.add('d-none');
-    [['dash', 'Dash'], ['cards', 'Cards'], ['overview', 'Overview'], ['log', 'Log'], ['ot', 'Ot']].forEach(([t, n]) => {
+    [['dash', 'Dash'], ['att', 'Att'], ['cards', 'Cards'], ['overview', 'Overview'], ['log', 'Log'], ['ot', 'Ot']].forEach(([t, n]) => {
       const b = document.getElementById('btnTab' + n);
       b.classList.toggle('btn-primary', t === tab);
       b.classList.toggle('btn-outline-primary', t !== tab);
@@ -1080,7 +1082,9 @@ async function callGasApi(action, payload) {
     document.getElementById('viewLog').classList.toggle('d-none', tab !== 'log');
     document.getElementById('viewDash').classList.toggle('d-none', tab !== 'dash');
     syncRangeBar();
+    document.getElementById('viewAtt').classList.toggle('d-none', tab !== 'att');
     if (tab === 'dash') renderDash();
+    if (tab === 'att') renderAtt();
     if (tab === 'log') renderLogView();
     if (tab === 'cards') renderCards();
     if (tab === 'overview') renderOverview();
@@ -1210,8 +1214,8 @@ function applyMode() {
   i18n.th.appTitle = u ? 'แมนพาวเวอร์' : 'OT'; i18n.en.appTitle = u ? 'ManPower' : 'OT'; i18n.zh.appTitle = u ? '人力管理' : '加班';
   document.querySelectorAll('[data-i18n="appTitle"]').forEach(el => el.innerText = i18n[currentLang].appTitle);
   document.title = i18n[currentLang].appTitle;
-  ['btnTabDash', 'btnTabCards', 'btnTabOverview', 'btnSettingsTop', 'btnTabOt', 'btnTabLog', 'exportMenu'].forEach(id => byId(id).classList.toggle('d-none', !u));
-  ['btnPubDaily', 'btnPubPlan', 'btnPubLeave'].forEach(id => byId(id).classList.toggle('d-none', u));
+  ['btnTabDash', 'btnTabAtt', 'btnTabCards', 'btnTabOverview', 'btnSettingsTop', 'btnTabOt', 'btnTabLog', 'exportMenu'].forEach(id => byId(id).classList.toggle('d-none', !u));
+  ['btnPubPlan', 'btnPubLeave'].forEach(id => byId(id).classList.toggle('d-none', u));
   byId('btnLock').innerHTML = u ? '<i class="bi bi-lock-fill"></i>' : '<i class="bi bi-unlock-fill"></i>';
   byId('btnLock').title = u ? 'Lock' : 'Unlock (PIN)';
 }
@@ -1269,7 +1273,7 @@ async function refreshLogs() {
   if (!otA) otA = isUnlocked() ? (otRows.reduce((m, r) => r.ot_date > m ? r.ot_date : m, '') || nowBkk()) : nowBkk();
 }
 let dashInit = false;
-function renderAllViews() { if (isUnlocked()) { renderCards(); renderOverview(); renderDash(); if (!dashInit) { dashInit = true; switchTab('dash'); } if (curTab === 'log') renderLogView(); } else renderPubData(); if (!byId('viewOT').classList.contains('d-none')) renderOT(); }
+function renderAllViews() { if (isUnlocked()) { renderCards(); renderOverview(); renderDash(); renderAtt(); if (!dashInit) { dashInit = true; switchTab('dash'); } if (curTab === 'log') renderLogView(); } else renderPubData(); if (!byId('viewOT').classList.contains('d-none')) renderOT(); }
 async function reloadAll() { employeesData = await loadLeaveData(isUnlocked()); await refreshLogs(); renderAllViews(); }
 
 /* ---------- Add Data modal ---------- */
@@ -1853,7 +1857,7 @@ async function otDel(id) {
   if (!isUnlocked()) return;
   if (!confirm(L('ลบรายการ OT นี้?', 'Delete this OT record?'))) return;
   const { error } = await supabaseClient.from('mp_ot_logs').delete().eq('id', id);
-  if (error) return alert(error.message); await loadOT(); renderCards(); renderOtHist();
+  if (error) return alert(error.message); await loadOT(); renderCards(); renderOtHist(); renderAtt(); renderDash();
 }
 function otOpenEntry() { openDataModal(otView === 'plan' ? 'plan' : 'ot'); }
 function renderOtLog() {                                   // before login: who has already entered data today (daily OT) / this week (plan)
@@ -2036,10 +2040,76 @@ function renderDash() {
       rs.map(r => { const w = otWho(r); return `<div class="small ps-2 py-1 border-bottom">${xE(w.name)} <span class="text-muted">${xE(r.shift || '')}</span> <b class="float-end">${n2(Number(r.plan_hours))}h</b></div>`; }).join('') + '</div>'; }).join('') || `<div class="text-muted small">${L('ยังไม่มีแพลน OT ใน 7 วันข้างหน้า', 'No OT plans in the next 7 days', '未来7天暂无加班计划')}</div>`;
   const qa = (icon, label, act, tone = 'outline-primary') => `<button class="btn btn-${tone} text-start" onclick="${act}"><i class="bi ${icon}"></i> ${label}</button>`;
   box.innerHTML = `<div class="d-flex justify-content-between align-items-end mb-3 flex-wrap"><div><h5 class="fw-bold mb-0"><i class="bi bi-speedometer2"></i> ${L('แดชบอร์ดแอดมิน', 'Admin dashboard', '管理员面板')}</h5><div class="small text-muted">${fmtD(today)} ${wdName(today)}</div></div><button class="btn btn-sm btn-outline-secondary" onclick="reloadAll()"><i class="bi bi-arrow-clockwise"></i> ${L('รีเฟรช', 'Refresh', '刷新')}</button></div>` +
-    `<div class="row g-3 mb-3">${dashKpi('bi-envelope-paper', L('คำร้องลารออนุมัติ', 'Pending leave', '待审批请假'), pend.length, L('กดเพื่อไปตรวจสอบ', 'Click to review', '点击查看'), "goLog('req')", pend.length ? '#dc2626' : '#16a34a')}${dashKpi('bi-calendar-check', L('แพลน OT วันนี้', 'OT plan today', '今日加班计划'), pToday.length, hSum(pToday) + ' h', "goLog('plan')", '#2563eb')}${dashKpi('bi-calendar-week', L('แพลน OT 7 วัน', 'OT plan 7 days', '7天加班计划'), pWeek.length, hSum(pWeek) + ' h', "goLog('plan')", '#7c3aed')}${dashKpi('bi-clock-history', L('OT ที่ลงวันนี้', 'OT logged today', '今日已录加班'), otToday.length, n2(otToday.reduce((t, r) => t + (Number(r.ot_hours) || 0), 0)) + ' h', "goLog('ot')", '#ea580c')}</div>` +
+    `<div class="row g-3 mb-3">${dashKpi('bi-envelope-paper', L('คำร้องลารออนุมัติ', 'Pending leave', '待审批请假'), pend.length, L('กดเพื่อไปตรวจสอบ', 'Click to review', '点击查看'), "goLog('req')", pend.length ? '#dc2626' : '#16a34a')}${dashKpi('bi-calendar-check', L('แพลน OT วันนี้', 'OT plan today', '今日加班计划'), pToday.length, hSum(pToday) + ' h', "goLog('plan')", '#2563eb')}${dashKpi('bi-calendar-week', L('แพลน OT 7 วัน', 'OT plan 7 days', '7天加班计划'), pWeek.length, hSum(pWeek) + ' h', "goLog('plan')", '#7c3aed')}${dashKpi('bi-clock-history', L('OT ที่ลงวันนี้', 'OT logged today', '今日已录加班'), otToday.length, n2(otToday.reduce((t, r) => t + (Number(r.ot_hours) || 0), 0)) + ' h', "switchTab('att')", '#ea580c')}</div>` +
     `<div class="row g-3"><div class="col-lg-7"><div class="emp-card p-3 mb-3"><h6 class="fw-bold"><i class="bi bi-inbox"></i> ${L('งานรออนุมัติ', 'Needs approval', '待办审批')} (${pend.length})</h6>${reqList}</div>` +
-    `<div class="emp-card p-3"><h6 class="fw-bold"><i class="bi bi-lightning-charge"></i> ${L('ทางลัด', 'Shortcuts', '快捷入口')}</h6><div class="d-grid gap-2" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">${qa('bi-pencil-square', L('จัดการแพลน OT (แก้ไข/ลบ)', 'Manage OT plans (edit/delete)', '管理加班计划'), "goLog('plan')", 'primary')}${qa('bi-list-check', L('OT log (แก้ไข/ลบ)', 'OT log (edit/delete)', '加班记录'), "goLog('ot')")}${qa('bi-journal-text', L('ประวัติการลา', 'Leave history', '请假记录'), "goLog('leave')")}${qa('bi-grid-fill', L('รายบุคคล / โควต้า', 'Per person / quota', '个人 / 额度'), "switchTab('cards')")}${qa('bi-bar-chart-fill', L('ภาพรวมเปรียบเทียบ', 'Overview', '总览'), "switchTab('overview')")}${qa('bi-clock-history', L('รายงาน OT', 'OT reports', '加班报表'), "switchTab('ot')")}${qa('bi-gear', L('ตั้งค่า (พนักงาน/วันหยุด)', 'Settings (staff/holidays)', '设置'), "byId('btnSettingsTop').click()", 'outline-secondary')}</div></div></div>` +
+    `<div class="emp-card p-3"><h6 class="fw-bold"><i class="bi bi-lightning-charge"></i> ${L('ทางลัด', 'Shortcuts', '快捷入口')}</h6><div class="d-grid gap-2" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">${qa('bi-person-check', L('ลง OT ประจำวัน (ติ๊กคนมาทำงาน)', 'Daily OT (tick who worked)', '每日加班(勾选)'), "switchTab('att')", 'success')}${qa('bi-pencil-square', L('จัดการแพลน OT (แก้ไข/ลบ)', 'Manage OT plans (edit/delete)', '管理加班计划'), "goLog('plan')", 'primary')}${qa('bi-list-check', L('OT log (แก้ไข/ลบ)', 'OT log (edit/delete)', '加班记录'), "goLog('ot')")}${qa('bi-journal-text', L('ประวัติการลา', 'Leave history', '请假记录'), "goLog('leave')")}${qa('bi-grid-fill', L('รายบุคคล / โควต้า', 'Per person / quota', '个人 / 额度'), "switchTab('cards')")}${qa('bi-bar-chart-fill', L('ภาพรวมเปรียบเทียบ', 'Overview', '总览'), "switchTab('overview')")}${qa('bi-clock-history', L('รายงาน OT', 'OT reports', '加班报表'), "switchTab('ot')")}${qa('bi-gear', L('ตั้งค่า (พนักงาน/วันหยุด)', 'Settings (staff/holidays)', '设置'), "byId('btnSettingsTop').click()", 'outline-secondary')}</div></div></div>` +
     `<div class="col-lg-5"><div class="emp-card p-3"><h6 class="fw-bold"><i class="bi bi-calendar3"></i> ${L('แพลน OT 7 วันข้างหน้า', 'OT plans – next 7 days', '未来7天加班计划')}</h6>${planList}<button class="btn btn-sm btn-link px-0" onclick="goLog('plan')">${L('จัดการแพลนทั้งหมด →', 'Manage all plans →', '管理全部计划 →')}</button></div></div></div>`;
+}
+
+/* ===== ADMIN: daily OT attendance (pick a date, tick who came, save once) ===== */
+let attDate = '', attShift = 'A', attSub = 'form', attSel = new Set(), attQ = '', attMsg = '';
+const attDone = d => { const m = new Map(); otRows.filter(r => r.ot_date === d).forEach(r => { if (r.employee_id != null) m.set(String(r.employee_id), r); const e = employeesData.find(x => String(x.empId).trim().toLowerCase() === String(r.emp_code || '').trim().toLowerCase()); if (e && !m.has(String(e.startRow))) m.set(String(e.startRow), r); }); return m; };
+function attSetDate(d) { if (!d) return; attDate = d; attSel.clear(); attMsg = ''; renderAtt(); }
+function attStep(n) { attSetDate(addDays(attDate || nowBkk(), n)); }
+function attSetShift(v) { attShift = v; renderAtt(); }
+function attSetSub(v) { attSub = v; attMsg = ''; renderAtt(); }
+function attTick(id, on) { on ? attSel.add(String(id)) : attSel.delete(String(id)); attCount(); }
+function attCount() {
+  const n = attSel.size, b = byId('attSaveBtn'); if (b) { b.disabled = !n; b.innerHTML = `<i class="bi bi-save"></i> ${L('บันทึก', 'Save', '保存')} (${n} ${L('คน', 'ppl', '人')})`; }
+  document.querySelectorAll('#attBody tr[data-id]').forEach(tr => { if (!tr.classList.contains('att-done')) tr.style.background = attSel.has(tr.dataset.id) ? '#dcfce7' : ''; });
+}
+function attAll(on) {
+  const done = attDone(attDate); attSel.clear();
+  if (on) document.querySelectorAll('#attBody tr[data-id]:not(.d-none)').forEach(tr => { if (!done.has(tr.dataset.id)) attSel.add(tr.dataset.id); });
+  document.querySelectorAll('#attBody input[type=checkbox]').forEach(c => { if (!c.disabled) c.checked = attSel.has(c.closest('tr').dataset.id); });
+  attCount();
+}
+function attFilter(q) {
+  attQ = q; const k = q.trim().toLowerCase();
+  document.querySelectorAll('#attBody tr[data-id]').forEach(tr => tr.classList.toggle('d-none', !!k && !tr.dataset.s.includes(k)));
+}
+async function attSave() {
+  if (!isUnlocked() || !attSel.size) return;
+  const rows = [];
+  for (const id of attSel) {
+    const e = employeesData.find(x => String(x.startRow) === id); if (!e) continue;
+    const h = num(byId('attH_' + id).value);
+    if (h == null || h <= 0 || h > 2) return alert(L(`ชั่วโมงของ ${e.name} ต้องอยู่ระหว่าง 0.5 – 2`, `Hours for ${e.name} must be 0.5 – 2`, `${e.name} 的小时需在 0.5–2`));
+    const off = isOffDay(e.schedule, attDate);
+    rows.push({ employee_id: e.startRow, emp_code: e.empId, emp_name: e.name, shift: attShift, ot_type: 'Usual', note: null, ot_date: attDate, ot_hours: h, day_type: holKind(attDate) ? '节假日' : off ? '休息日' : '工作日', source: 'web-admin' });
+  }
+  showLoader(true, L('กำลังบันทึกข้อมูล...', 'Saving...', '正在保存...'));
+  try { await supabaseClient.from('mp_ot_logs').insert(rows).then(chk); attMsg = L(`บันทึกแล้ว ${rows.length} คน (กะ ${attShift})`, `Saved ${rows.length} people (shift ${attShift})`, `已保存 ${rows.length} 人`); attSel.clear(); await reloadAll(); }
+  catch (err) { alert('Error: ' + (err.message || err)); }
+  showLoader(false);
+}
+function renderAtt() {
+  const box = byId('viewAtt'); if (!box || !isUnlocked()) return; if (!attDate) attDate = nowBkk();
+  const done = attDone(attDate), k = holKind(attDate), emps = [...employeesData].sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  const nDone = emps.filter(e => done.has(String(e.startRow))).length;
+  const btn = (on, act, txt) => `<button class="btn btn-sm ${on ? 'btn-primary' : 'btn-outline-primary'}" onclick="${act}">${txt}</button>`;
+  const top = `<div class="d-flex flex-wrap align-items-center gap-2 mb-3"><div class="btn-group btn-group-sm">${btn(attSub === 'form', "attSetSub('form')", '＋ ' + L('ลงข้อมูล', 'Enter data', '录入'))}${btn(attSub === 'log', "attSetSub('log')", L('ข้อมูลที่ลงแล้ว', 'Entered data', '已录入'))}</div>` +
+    `<div class="d-flex align-items-center gap-1 ms-md-3"><button class="btn btn-sm btn-outline-secondary" onclick="attStep(-1)">‹</button><input type="date" class="form-control form-control-sm" style="width:150px" value="${attDate}" onchange="attSetDate(this.value)"><button class="btn btn-sm btn-outline-secondary" onclick="attStep(1)">›</button><button class="btn btn-sm btn-outline-secondary" onclick="attSetDate(nowBkk())">${L('วันนี้', 'Today', '今天')}</button></div>` +
+    `<span class="fw-bold">${wdName(attDate)}</span>${k ? `<span class="badge" style="background:${HOL_BG[k]};color:#422006;white-space:normal;text-align:left">${xE(holName(attDate))}</span>` : isOffDay('sat_sun', attDate) ? `<span class="badge bg-light text-dark border">${L('วันหยุด', 'Day off', '休息日')}</span>` : ''}</div>`;
+  let body;
+  if (attSub === 'form') {
+    body = `<div class="emp-card p-3"><div class="d-flex flex-wrap align-items-center gap-2 mb-2"><span class="small fw-bold">${L('กะ', 'Shift', '班别')}</span><div class="btn-group btn-group-sm ms-1">${SHIFT_OPTS.map(x => btn(attShift === x, `attSetShift('${x}')`, x)).join('')}</div>` +
+      `<div class="input-group input-group-sm ms-md-3" style="max-width:240px"><span class="input-group-text"><i class="bi bi-search"></i></span><input class="form-control" placeholder="${L('ค้นหาชื่อ / รหัส', 'Search', '搜索')}" value="${xE(attQ)}" oninput="attFilter(this.value)"></div>` +
+      `<button class="btn btn-sm btn-outline-secondary" onclick="attAll(true)">${L('เลือกทั้งหมด', 'Select all', '全选')}</button><button class="btn btn-sm btn-outline-secondary" onclick="attAll(false)">${L('ล้าง', 'Clear', '清除')}</button>` +
+      `<span class="small text-muted ms-auto">${L('บันทึกแล้ว', 'Saved', '已保存')} ${nDone}/${emps.length}</span><button id="attSaveBtn" class="btn btn-success btn-sm" onclick="attSave()" disabled></button></div>` +
+      (attMsg ? `<div class="alert alert-success py-1 small mb-2"><i class="bi bi-check-circle"></i> ${xE(attMsg)}</div>` : '') +
+      `<div class="small text-muted mb-1">${L('ติ๊กคนที่มาทำ OT แล้วกดบันทึกครั้งเดียว · แถวสีเทา = บันทึกแล้ว', 'Tick everyone who worked OT, then save once · grey rows = already saved', '勾选加班人员后一次保存 · 灰色=已保存')}</div>` +
+      `<div style="max-height:68vh;overflow:auto"><table class="table table-sm align-middle mb-0"><thead class="table-light" style="position:sticky;top:0;z-index:1"><tr><th style="width:40px"></th><th>${L('รหัส', 'ID', '工号')}</th><th>${L('ชื่อ', 'Name', '姓名')}</th><th style="width:100px">${L('ชั่วโมง', 'Hours', '小时')}</th><th>${L('สถานะ', 'Status', '状态')}</th></tr></thead><tbody id="attBody">` +
+      emps.map(e => { const id = String(e.startRow), r = done.get(id), s = (e.empId + ' ' + e.name).toLowerCase();
+        return r ? `<tr data-id="${id}" data-s="${xE(s)}" class="att-done" style="background:#e9ecef;color:#6c757d"><td><input type="checkbox" class="form-check-input" checked disabled></td><td>${xE(e.empId)}</td><td>${xE(e.name)}</td><td>${n2(Number(r.ot_hours))}</td><td><i class="bi bi-check2-circle"></i> ${L('บันทึกแล้ว', 'Saved', '已保存')} · ${L('กะ', 'Shift', '班别')} ${xE(shiftNorm(r.shift) || '-')}</td></tr>`
+          : `<tr data-id="${id}" data-s="${xE(s)}"${attQ && !s.includes(attQ.trim().toLowerCase()) ? ' class="d-none"' : ''}${attSel.has(id) ? ' style="background:#dcfce7"' : ''}><td><input type="checkbox" class="form-check-input" ${attSel.has(id) ? 'checked' : ''} onchange="attTick('${id}', this.checked)"></td><td>${xE(e.empId)}</td><td>${xE(e.name)}</td><td><input id="attH_${id}" type="number" min="0.5" max="2" step="0.5" value="2" class="form-control form-control-sm" style="width:80px"></td><td class="text-muted small">—</td></tr>`; }).join('') + `</tbody></table></div></div>`;
+  } else {
+    const rs = otRows.filter(r => r.ot_date === attDate).sort((a, b) => otWho(a).name.localeCompare(otWho(b).name)), tot = rs.reduce((t, r) => t + (Number(r.ot_hours) || 0), 0);
+    body = `<div class="emp-card p-3"><div class="small text-muted mb-2">${rs.length} ${L('คน', 'people', '人')} · ${n2(tot)} ${L('ชม.', 'h', '小时')}</div><table class="table table-sm align-middle mb-0"><thead class="table-light"><tr><th>${L('รหัส', 'ID', '工号')}</th><th>${L('ชื่อ', 'Name', '姓名')}</th><th>${L('กะ', 'Shift', '班别')}</th><th>${L('ประเภทวัน', 'Day type', '日期类型')}</th><th>${L('ชม.', 'h', '小时')}</th><th></th></tr></thead><tbody>` +
+      (rs.map(r => { const w = otWho(r); return `<tr><td>${xE(w.code)}</td><td>${xE(w.name)}</td><td>${xE(shiftNorm(r.shift) || '')}</td><td>${xE(otT(dayKind(r.day_type)))}</td><td>${n2(Number(r.ot_hours))}</td><td><button class="btn btn-sm btn-outline-danger py-0" title="${L('ลบ', 'Delete', '删除')}" onclick="otDel(${r.id})"><i class="bi bi-trash"></i></button></td></tr>`; }).join('') || `<tr><td colspan="6" class="text-center text-muted py-3">${L('ยังไม่มีข้อมูลในวันนี้', 'No data for this date', '该日期暂无数据')}</td></tr>`) + `</tbody></table></div>`;
+  }
+  const keep = box.querySelector('#attBody') ? box.querySelector('#attBody').parentElement.parentElement.scrollTop : 0;
+  box.innerHTML = top + body; if (attSub === 'form') { attCount(); const sc = box.querySelector('#attBody'); if (sc && keep) sc.parentElement.parentElement.scrollTop = keep; }
 }
 
 let planEditId = null;
@@ -2206,7 +2276,7 @@ i18n.zh = Object.assign({}, i18n.en, {"appTitle": "员工请假管理", "tabCard
 
 <script>
 /* ===================== public (before login) tabs: daily OT · OT plan calendar · leave request ===================== */
-let pubTab = 'pdaily', pubBuilt = '', pdSub = 'form', pdA = '', calY = 0, calM = 0, calSel = '', reqRows = [], reqErr = '';
+let pubTab = 'pplan', pubBuilt = '', pdSub = 'form', pdA = '', calY = 0, calM = 0, calSel = '', reqRows = [], reqErr = '';
 const MONTHS = () => currentLang === 'th' ? ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'] : currentLang === 'zh' ? Array.from({ length: 12 }, (_, i) => (i + 1) + '月') : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const WDM = () => currentLang === 'th' ? ['จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.', 'อา.'] : currentLang === 'zh' ? ['一', '二', '三', '四', '五', '六', '日'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const planOpen = d => !!holKind(d) || [5, 6, 0].includes(dow(d));            // Fri / Sat / Sun + every holiday (any weekday)
@@ -2220,9 +2290,9 @@ const codeList = () => `<datalist id="empCodes">${employeesData.map(e => `<optio
 
 function pubSwitch(tab) {
   pubTab = tab; curTab = tab;
-  ['viewLeave', 'viewOverview', 'viewOT', 'viewDash', 'viewLog'].forEach(id => byId(id).classList.add('d-none'));
+  ['viewLeave', 'viewOverview', 'viewOT', 'viewDash', 'viewAtt', 'viewLog'].forEach(id => byId(id).classList.add('d-none'));
   byId('viewPub').classList.remove('d-none');
-  [['pdaily', 'Daily', 'pubDaily'], ['pplan', 'Plan', 'pubPlan'], ['pleave', 'Leave', 'pubLeave']].forEach(([t, n, sec]) => {
+  [['pplan', 'Plan', 'pubPlan'], ['pleave', 'Leave', 'pubLeave']].forEach(([t, n, sec]) => {
     const b = byId('btnPub' + n), on = t === tab; b.classList.toggle('btn-primary', on); b.classList.toggle('btn-outline-primary', !on); b.classList.toggle('active', on);
     byId(sec).classList.toggle('d-none', !on);
   });
@@ -2233,9 +2303,6 @@ function pubSwitch(tab) {
 }
 function buildPub() {
   pubBuilt = currentLang;
-  byId('pubDaily').innerHTML = `<div class="btn-group btn-group-sm mp-toggle mb-3" id="pdSubBtns"><button class="btn btn-primary" data-s="form" onclick="pdSetSub('form')">＋ ${L('ลงข้อมูล', 'Enter data', '录入')}</button><button class="btn btn-outline-primary" data-s="log" onclick="pdSetSub('log')">${L('รายการที่ลงแล้ว', 'Entered list', '已录入列表')}</button></div>
-    <div id="pdForm" class="emp-card p-3">${DM_FORM.ot()}</div><div id="pdLog" class="d-none"></div>`;
-  DM_INIT.ot(); pdSetSub(pdSub);
   byId('pubPlan').innerHTML = `${codeList()}<div class="row g-3"><div class="col-lg-7"><div class="emp-card p-3"><div id="calBox"></div>
       <div class="small mt-2 d-flex flex-wrap gap-3 text-muted"><span><span style="display:inline-block;width:12px;height:12px;background:#dcfce7;border:1px solid #86efac;border-radius:3px"></span> ${L('ลงแพลนได้ (ศ./ส./อา. และวันหยุดทุกวัน)', 'Open (Fri/Sat/Sun + all holidays)', '可录入（周五/六/日及所有假日）')}</span><span><span style="display:inline-block;width:12px;height:12px;background:#fde68a;border-radius:3px"></span> ${L('วันหยุดนักขัตฤกษ์', 'Public holiday', '法定假日')}</span><span><span style="display:inline-block;width:12px;height:12px;background:#bbf7d0;border-radius:3px"></span> ${L('วันหยุดชดเชย / พิเศษ', 'Substitute / special holiday', '补休 / 特别休假')}</span><span><span style="display:inline-block;width:12px;height:12px;background:#fed7aa;border-radius:3px"></span> ${L('วันหยุดเพิ่มเติม', 'Additional holiday', '额外假日')}</span><span><span style="display:inline-block;width:12px;height:12px;background:rgba(128,128,128,.2);border-radius:3px"></span> ${L('ไม่เปิดให้ลง', 'Not open', '不开放')}</span></div></div></div>
     <div class="col-lg-5"><div class="emp-card p-3" id="calDay"></div></div></div>
@@ -2255,7 +2322,7 @@ function buildPub() {
     <button class="btn btn-success btn-sm mt-3" onclick="lrSubmit()"><i class="bi bi-send"></i> ${L('ส่งคำร้องขอลา', 'Submit request', '提交申请')}</button></div>`;
   byId('lrDate').value = nowBkk();
 }
-function renderPubData() { if (!byId('pubPlan').innerHTML) return; calRender(); calDayRender(); calListRender(); if (pdSub === 'log') renderPdLog(); }
+function renderPubData() { if (!byId('pubPlan').innerHTML) return; calRender(); calDayRender(); calListRender(); }
 
 /* ----- daily OT: form | list ----- */
 function pdSetSub(v) {
