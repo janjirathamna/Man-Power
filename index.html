@@ -1646,7 +1646,7 @@ function planGridRender() {
   if (!planDays.length) planDays = planWeekDays(byId('plStart').value || nowBkk());
   const inp = (i, f, v, w) => `<input class="form-control form-control-sm" style="min-width:${w}px" value="${xE(v)}" onchange="planSet(${i},'${f}',this.value)">`;
   byId('plGrid').innerHTML = `<table class="table table-sm table-bordered align-middle text-center" style="font-size:12px"><thead class="table-success"><tr><th>${L('พนักงาน', 'Employee', '员工')}</th><th>${L('กะ', 'Shift', '班别')}</th>${planDays.map((d, k) => `<th style="background:${hdrBg(d, '')}">${isUnlocked() ? `<input type="date" value="${d}" class="form-control form-control-sm" style="min-width:128px" onchange="planSetDay(${k},this.value)">` : fmtDM(d)}<br><small>${wdName(d)}</small></th>`).join('')}<th>${L('ประเภท OT', 'OT type', '加班类型')}</th><th>${L('หมายเหตุ', 'Note', '备注')}</th><th></th></tr></thead><tbody>` +
-    planGrid.map((r, i) => `<tr><td><select class="form-select form-select-sm" style="min-width:150px" onchange="planSet(${i},'emp',this.value)"><option value="">—</option>${employeesData.map(e => `<option value="${e.startRow}"${String(e.startRow) === String(r.emp) ? ' selected' : ''}>${xE(e.empId)} ${xE(e.name)}</option>`).join('')}</select></td><td><select class="form-select form-select-sm" style="min-width:90px" onchange="planSet(${i},'shift',this.value)"><option value="">—</option>${shiftList().map(x => `<option value="${xE(x)}"${x === r.shift ? ' selected' : ''}>${xE(x)}</option>`).join('')}</select></td>` +
+    planGrid.map((r, i) => `<tr><td><select class="form-select form-select-sm" style="min-width:150px" onchange="planSet(${i},'emp',this.value)"><option value="">—</option>${employeesData.map(e => `<option value="${e.startRow}"${String(e.startRow) === String(r.emp) ? ' selected' : ''}>${xE(e.empId)} ${xE(e.name)}</option>`).join('')}</select></td><td><select class="form-select form-select-sm" style="min-width:90px" onchange="planSet(${i},'shift',this.value)"><option value="">—</option>${shiftList().map(x => `<option value="${xE(x)}"${x === shiftNorm(r.shift) ? ' selected' : ''}>${xE(x)}</option>`).join('')}</select></td>` +
       planDays.map((d, k) => `<td><input type="number" step="0.5" min="0" class="form-control form-control-sm" style="width:64px;${(() => { const e = empOf(r.emp); return e ? 'background:' + (hdrBg(d, e.schedule) || (planCellOk(e, d) ? '' : '#e5e7eb')) : ''; })()}" value="${xE(r.h[k] ?? '')}" ${(() => { const e = empOf(r.emp); return e && !planCellOk(e, d) ? 'disabled' : ''; })()} onchange="planSetH(${i},${k},this.value)"></td>`).join('') +
       `<td>${inp(i, 'ot_type', r.ot_type, 70)}</td><td>${inp(i, 'note', r.note, 110)}</td><td><button class="btn btn-sm btn-outline-danger py-0" onclick="planDelRow(${i})"><i class="bi bi-x"></i></button></td></tr>`).join('') + '</tbody></table>';
 }
@@ -1988,7 +1988,25 @@ function renderSummaryView() {
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.raw} h` } } }, scales: { y: { beginAtZero: true, ticks: { font: { size: 10 }, precision: 0 } }, x: { ticks: { font: { size: 10 }, maxRotation: 0 } } } } }));
   });
 }
-function setLogKind(k) { logKind = k; renderLogView(); }
+let planEditId = null;
+function setLogKind(k) { logKind = k; planEditId = null; renderLogView(); }
+function planLogEdit(id) { planEditId = id; renderLogView(); }
+async function planLogSave(id) {
+  if (!isUnlocked()) return;
+  const d = byId('pe_date').value, h = num(byId('pe_h').value);
+  if (!d || h == null || h < 0) return alert(L('กรอกวันที่และชั่วโมงให้ถูกต้อง', 'Enter a valid date and hours', '请输入有效日期和小时'));
+  showLoader(true, L('กำลังบันทึก...', 'Saving...', '正在保存...'));
+  try { await supabaseClient.from('mp_ot_plans').update({ plan_date: d, shift: T(byId('pe_shift').value), plan_hours: h, ot_type: T(byId('pe_type').value), note: T(byId('pe_note').value) }).eq('id', id).then(chk); planEditId = null; await reloadAll(); }
+  catch (err) { alert('Error: ' + (err.message || err)); }
+  showLoader(false);
+}
+async function planLogDel(id) {
+  if (!isUnlocked() || !confirm(L('ลบแพลนนี้?', 'Delete this plan?', '删除此计划？'))) return;
+  showLoader(true, L('กำลังลบ...', 'Deleting...', '正在删除...'));
+  try { await supabaseClient.from('mp_ot_plans').delete().eq('id', id).then(chk); selSet('plog').delete(id); await reloadAll(); }
+  catch (err) { alert('Error: ' + (err.message || err)); }
+  showLoader(false);
+}
 function renderLogView() {
   const CAP = 500, em = new Map(employeesData.map(e => [e.startRow, e]));
   let head, rows, total, selKey = '', ids = [];
@@ -2010,14 +2028,19 @@ function renderLogView() {
         fmtD(r.leave_date) + (r.leave_end && r.leave_end !== r.leave_date ? ' – ' + fmtD(r.leave_end) : ''), r.all_day ? L('ทั้งวัน', 'All day', '全天') + ' · ' + r.hours + 'h' : `${String(r.time_from || '').slice(0, 5)}–${String(r.time_to || '').slice(0, 5)} · ${r.hours}h`,
         xE(r.reason || ''), (r.evidence || []).map(f => `<a href="${xE(f.url)}" target="_blank" rel="noopener"><i class="bi bi-paperclip"></i>${xE(f.name)}</a>`).join('<br>') || '-', `<span class="badge ${sb[0]}">${sb[1]}</span>`,
         `<div class="d-flex gap-1">${r.status === 'pending' ? `<button class="btn btn-sm btn-success py-0" title="${L('อนุมัติ', 'Approve')}" onclick="reqDecide(${r.id},'approved')"><i class="bi bi-check-lg"></i></button><button class="btn btn-sm btn-outline-secondary py-0" title="${L('ไม่อนุมัติ', 'Reject')}" onclick="reqDecide(${r.id},'rejected')"><i class="bi bi-x-lg"></i></button>` : ''}</div>`]; });
-  } else {
-    const d = quotaLogs.filter(r => inRg(bkkDate(r.created_at))).sort((a, b) => b.id - a.id); total = d.length;
-    head = [L('เวลา', 'Time'), L('รหัส', 'ID'), L('ชื่อ', 'Name'), L('ประเภท', 'Type'), L('เดิม → ใหม่', 'Old → New'), L('หมายเหตุ', 'Note'), L('โดย', 'By')];
-    rows = d.slice(0, CAP).map(r => { const e = em.get(r.employee_id); return [xE(new Date(r.created_at).toLocaleString(L('th-TH', 'en-GB'), { timeZone: 'Asia/Bangkok', hourCycle: 'h23' })), xE(e ? e.empId : ''), xE(e ? e.name : r.employee_id), xE(LEAVE_LABELS[r.leave_key] || r.leave_key), `${r.old_quota ?? '—'} → <b>${r.new_quota}</b>`, xE(r.note || ''), xE(r.changed_by || '')]; });
+  } else {   // OT plan log (admin): edit + delete
+    const d = planRows.filter(r => inRg(r.plan_date)).sort((a, b) => b.plan_date.localeCompare(a.plan_date) || b.id - a.id); total = d.length;
+    head = [L('วันที่', 'Date', '日期'), L('รหัส', 'ID', '工号'), L('ชื่อ', 'Name', '姓名'), L('กะ', 'Shift', '班别'), L('ชั่วโมง', 'Hours', '小时'), L('ประเภท OT', 'OT type', '加班类型'), L('หมายเหตุ', 'Note', '备注'), ''];
+    selKey = 'plog'; ids = d.slice(0, CAP).map(r => r.id);
+    rows = d.slice(0, CAP).map(r => { const w = otWho(r);
+      if (planEditId === r.id) return [`<input type="date" id="pe_date" class="form-control form-control-sm" style="min-width:130px" value="${xE(r.plan_date)}">`, xE(w.code), xE(w.name), shiftSel('pe_shift', r.shift), `<input type="number" id="pe_h" step="0.5" min="0" class="form-control form-control-sm" style="width:80px" value="${xE(r.plan_hours)}">`, `<input id="pe_type" class="form-control form-control-sm" style="min-width:80px" value="${xE(r.ot_type || '')}">`, `<input id="pe_note" class="form-control form-control-sm" style="min-width:120px" value="${xE(r.note || '')}">`,
+        `<div class="d-flex gap-1"><button class="btn btn-sm btn-success py-0" title="${L('บันทึก', 'Save', '保存')}" onclick="planLogSave(${r.id})"><i class="bi bi-check-lg"></i></button><button class="btn btn-sm btn-outline-secondary py-0" title="${L('ยกเลิก', 'Cancel', '取消')}" onclick="planLogEdit(null)"><i class="bi bi-x-lg"></i></button></div>`];
+      return [fmtD(r.plan_date) + ' <span class="text-muted small">' + wdName(r.plan_date) + '</span>', xE(w.code), xE(w.name), xE(r.shift || ''), n2(Number(r.plan_hours) || 0), xE(r.ot_type || ''), xE(r.note || ''),
+        `<div class="d-flex gap-1"><button class="btn btn-sm btn-outline-primary py-0" title="${L('แก้ไข', 'Edit', '编辑')}" onclick="planLogEdit(${r.id})"><i class="bi bi-pencil-square"></i></button><button class="btn btn-sm btn-outline-danger py-0" title="${L('ลบ', 'Delete', '删除')}" onclick="planLogDel(${r.id})"><i class="bi bi-trash"></i></button></div>`]; });
   }
   if (selKey) { head = [selHead(selKey), ...head]; rows = rows.map((r, i) => [selChk(selKey, ids[i]), ...r]); }
   byId('viewLog').innerHTML = `<div class="emp-card p-3"><div class="d-flex flex-wrap gap-2 align-items-center mb-2"><div class="btn-group btn-group-sm mp-toggle">` +
-    [['leave', L('ประวัติการลา', 'Leave log')], ['ot', 'OT log'], ['req', reqLbl()], ['quota', L('ประวัติโควต้า', 'Quota log')]].map(([k, l]) => `<button class="btn ${logKind === k ? 'btn-primary' : 'btn-outline-primary'}" onclick="setLogKind('${k}')">${l}</button>`).join('') +
+    [['leave', L('ประวัติการลา', 'Leave log')], ['ot', 'OT log'], ['req', reqLbl()], ['plan', L('ประวัติแพลน OT', 'OT plan log', '加班计划记录')]].map(([k, l]) => `<button class="btn ${logKind === k ? 'btn-primary' : 'btn-outline-primary'}" onclick="setLogKind('${k}')">${l}</button>`).join('') +
     `</div><span class="small text-muted">${total} ${L('รายการ', 'records')}${total > CAP ? ' · ' + L('แสดง ' + CAP + ' รายการล่าสุด (ดูทั้งหมดใน Excel)', 'showing latest ' + CAP + ' (full list in Excel)') : ''}</span></div>` + (selKey ? selBar(selKey, ids) : '') +
     `<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0"><thead class="table-light"><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${head.length}" class="text-muted text-center">—</td></tr>`}</tbody></table></div></div>`;
 }
@@ -2314,10 +2337,10 @@ async function reqDel(id) {
 
 <script>
 /* ===== helpers: pick rows -> delete all picked at once · shift dropdown · 24-hour time ===== */
-const SHIFT_DEFAULT = ['Day', 'Night'];                     // <- edit / add the shift names you want in the dropdown
-const shiftList = () => [...new Set([...SHIFT_DEFAULT, ...otRows.map(r => r.shift), ...planRows.map(r => r.shift)].map(x => String(x || '').trim()).filter(Boolean))];
-const SHIFT_OPTS = ['เช้า / Day', 'ดึก / Night'];
-const shiftNorm = v => { const t = String(v || '').trim().toLowerCase(); if (!t) return ''; if (t.includes('night') || t.includes('ดึก')) return SHIFT_OPTS[1]; if (t.includes('day') || t.includes('เช้า')) return SHIFT_OPTS[0]; return String(v).trim(); };
+const SHIFT_DEFAULT = ['A', 'B'];                     // <- edit / add the shift names you want in the dropdown
+const shiftList = () => [...new Set([...SHIFT_DEFAULT, ...otRows.map(r => r.shift), ...planRows.map(r => r.shift)].map(x => shiftNorm(x)).filter(Boolean))];
+const SHIFT_OPTS = ['A', 'B'];
+const shiftNorm = v => { const t = String(v || '').trim().toLowerCase(); if (!t) return ''; if (t === 'b' || t.includes('night') || t.includes('ดึก')) return SHIFT_OPTS[1]; if (t === 'a' || t.includes('day') || t.includes('เช้า')) return SHIFT_OPTS[0]; return String(v).trim(); };
 const shiftSel = (id, val) => `<select id="${id}" class="form-select form-select-sm"><option value="">—</option>${SHIFT_OPTS.map(x => `<option value="${xE(x)}"${x === shiftNorm(val) ? ' selected' : ''}>${xE(x)}</option>`).join('')}</select>`;
 const timeSel = id => `<div class="d-flex align-items-center gap-1"><select id="${id}H" class="form-select form-select-sm" onchange="lrCalc()"><option value="">--</option>${Array.from({ length: 24 }, (_, i) => `<option value="${p2(i)}">${p2(i)}</option>`).join('')}</select><b>:</b><select id="${id}M" class="form-select form-select-sm" onchange="lrCalc()"><option value="">--</option>${Array.from({ length: 12 }, (_, i) => `<option value="${p2(i * 5)}">${p2(i * 5)}</option>`).join('')}</select></div>`;
 const timeVal = id => { const h = byId(id + 'H').value, m = byId(id + 'M').value; return h === '' ? '' : h + ':' + (m === '' ? '00' : m); };
@@ -2339,7 +2362,7 @@ async function selDelete(k) {
   try {
     if (k === 'leavelog') { for (const id of ids) { const r = leaveLogs.find(x => x.id === id); if (!r) continue; const e = employeesData.find(x => x.startRow === r.employee_id), lf = e && e.leaves[r.leave_key]; if (lf) await addUsed(lf.row, -Number(r.hours) / HOURS_PER_DAY); await supabaseClient.from('mp_leave_logs').delete().eq('id', id).then(chk); } }
     else if (k === 'req') { for (const id of ids) await supabaseClient.rpc('mp_req_del', { p_pin: ACCESS_PIN, p_id: id }).then(chk); }
-    else { const tb = { ot: 'mp_ot_logs', otplan: 'mp_ot_plans', pplan: 'mp_ot_plans', hol: 'mp_custom_holidays' }[k]; await supabaseClient.from(tb).delete().in('id', ids).then(chk); }
+    else { const tb = { ot: 'mp_ot_logs', otplan: 'mp_ot_plans', pplan: 'mp_ot_plans', plog: 'mp_ot_plans', hol: 'mp_custom_holidays' }[k]; await supabaseClient.from(tb).delete().in('id', ids).then(chk); }
     selSet(k).clear(); await reloadAll(); if (k === 'hol') renderHolList();
   } catch (err) { alert('Error: ' + (err.message || err)); }
   showLoader(false);
