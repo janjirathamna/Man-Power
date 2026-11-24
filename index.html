@@ -1,4 +1,3 @@
-      
 <!DOCTYPE html>
 <html lang="th" data-bs-theme="light">
 <head>
@@ -1123,8 +1122,29 @@ const WS = ['sat_sun', 'alt_sat', 'sun_only'];
 const WS_L = { sat_sun: ['หยุดเสาร์–อาทิตย์ (ทำงาน จ.-ศ.)', 'Sat–Sun off (work Mon–Fri)', '周六、周日休息（周一至周五上班）'], alt_sat: ['หยุดเสาร์เว้นเสาร์ + อาทิตย์', 'Alternate Sat + Sun off', '隔周六休息 + 周日休息'], sun_only: ['กลุ่มเทค หยุดแค่อาทิตย์ (ทำงาน จ.-ส.)', 'Tech: Sun off only (work Mon–Sat)', '技术组：仅周日休息（周一至周六上班）'] };
 const wsLbl = k => L(...WS_L[WS.includes(k) ? k : 'sat_sun']);
 const wsSelect = id => `<label class="form-label small fw-bold mb-0 mt-2">${L('รูปแบบวันหยุด', 'Day-off pattern', '休息日模式')}</label><select id="${id}" class="form-select form-select-sm">${WS.map(k => `<option value="${k}">${wsLbl(k)}</option>`).join('')}</select>`;
-const HOL_PUBLIC = new Set(['2026-12-31', '2027-01-01', '2027-04-13', '2027-04-14', '2027-04-15', '2027-06-03', '2027-07-28', '2027-08-12', '2027-10-13', '2027-12-31']);   // yellow
-const HOL_COMP = new Set(['2026-12-07', '2027-01-02', '2027-04-12', '2027-05-03', '2027-07-19', '2027-12-06']);                                                      // green
+const HOL_PUBLIC = new Set(['2026-12-31', '2027-01-01', '2027-01-02', '2027-04-13', '2027-04-14', '2027-04-15', '2027-05-01', '2027-06-03', '2027-07-28', '2027-08-12', '2027-10-13', '2027-12-31']);   // yellow
+const HOL_COMP = new Set(['2026-12-07', '2027-04-12', '2027-05-03', '2027-07-19', '2027-12-06']);                                                                                               // green (substitute / special days off)
+const HOL_NAMES = {   // holiday names shown on the calendar (tooltip + badge)
+  '2026-12-07': "Substitute King Bhumibol Adulyadej's Birthday (ชดเชย 5 ธ.ค.)",
+  '2026-12-31': "New Year's Eve (หยุดสิ้นปี)",
+  '2027-01-01': 'New Year Day (2027) 元旦',
+  '2027-01-02': 'Special Holiday 特别休假日',
+  '2027-04-12': 'Special Holiday 特别休假日',
+  '2027-04-13': 'Songkran Festival Day 宋干节',
+  '2027-04-14': 'Songkran Festival Day 宋干节',
+  '2027-04-15': 'Songkran Festival Day 宋干节',
+  '2027-05-01': 'National Labour Day 劳动节',
+  '2027-05-03': 'Substitute National Labour Day 劳动节补休',
+  '2027-06-03': 'H.M.The Queen Suthida 苏提达王后诞辰纪念日',
+  '2027-07-19': 'Substitute Asamha Bucha Day 三宝佛节补休',
+  '2027-07-28': "H.M.The King Vachiralongkorn's Birthday 十世皇诞辰纪念日",
+  '2027-08-12': "H.M.Queen Sirikit The Queen Mother's Birthday, National Mother's Day 母亲节",
+  '2027-10-13': 'H.M.King Bhumibol Adulyadej The Great Memorial Day 九世皇逝世纪念日',
+  '2027-12-06': "Substitute H.M.King Bhumibol Adulyadej's Birthday, National Father's Day 父亲节补休",
+  '2027-12-31': "New Year's Eve 年终假"
+};
+const HOL_BG = { public: '#fde68a', comp: '#bbf7d0', custom: '#fed7aa' };
+const holName = d => HOL_NAMES[d] || ((customHols.find(x => x.holiday_date === d) || {}).name || '');
 const ALT_SAT_REF = '2026-11-14';          // purple Saturdays: 2026-11-14, 11-28, 12-12, 12-26, 2027-01-09 ... 2027-12-25 (every 14 days)
 let customHols = [];                       // mp_custom_holidays rows {id, holiday_date, name}
 const dow = iso => new Date(iso + 'T00:00:00Z').getUTCDay();
@@ -1132,7 +1152,7 @@ const altSatOff = d => Math.round((Date.parse(d) - Date.parse(ALT_SAT_REF)) / 86
 const holKind = d => HOL_PUBLIC.has(d) ? 'public' : HOL_COMP.has(d) ? 'comp' : customHols.some(h => h.holiday_date === d) ? 'custom' : '';
 const isOffDay = (sc, d) => { if (holKind(d)) return true; const w = dow(d); return w === 0 || (w === 6 && (sc === 'sat_sun' || (sc === 'alt_sat' && altSatOff(d)))); };
 const planHoursFor = (sc, d) => isOffDay(sc, d) ? 10 : isOffDay(sc, addDays(d, 1)) ? 2 : 0;   // plan only on the person's day off (10h) or the day before (2h)
-const planCellOk = (e, d) => !e || isUnlocked() || holKind(d) === 'custom' || [5, 6, 0].includes(dow(d));
+const planCellOk = (e, d) => !e || isUnlocked() || !!holKind(d) || [5, 6, 0].includes(dow(d));   // any holiday (public / substitute / custom) or Fri-Sat-Sun
 const mondayOf = d => addDays(d, -((dow(d) + 6) % 7));
 const fmtD = iso => /^\d{4}-\d{2}-\d{2}/.test(iso || '') ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : (iso ?? '');
 const fmtDM = iso => /^\d{4}-\d{2}-\d{2}/.test(iso || '') ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : (iso ?? '');
@@ -1604,7 +1624,7 @@ function planDate(h) {                                    // header like 11/20/2
 const planKey = (c, n, d) => String(c || n || '').trim().toLowerCase() + '|' + d;
 const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const planBlank = () => ({ emp: '', shift: '', ot_type: 'Usual', note: '', reason: '', h: Array(planDays.length).fill('') });
-const planWeekDays = d => { const m = mondayOf(d); return Array.from({ length: 7 }, (_, i) => addDays(m, i)).filter(x => [5, 6, 0].includes(dow(x)) || holKind(x) === 'custom'); };   // Fri · Sat · Sun + custom holidays
+const planWeekDays = d => { const m = mondayOf(d); return Array.from({ length: 7 }, (_, i) => addDays(m, i)).filter(x => [5, 6, 0].includes(dow(x)) || !!holKind(x)); };   // Fri · Sat · Sun + every holiday
 const sj = s => [...s].join(' / ');
 function otSetView(v) { otView = v; renderOT(); }
 
@@ -1715,9 +1735,9 @@ function renderPlan() {
     .map(([l, v]) => `<div class="col-4 col-md-3"><div class="emp-card p-3 text-center"><div class="small text-muted">${l}</div><div class="fs-4 fw-bold">${v}</div></div></div>`).join('');
   let h = '';
   if (rows.length && otM === 'day' && !custom) {
-    h = selBar('otplan', rows.map(r => r.id)) + `<table class="table table-sm table-hover align-middle mb-0"><thead class="table-success"><tr><th>${selHead('otplan')}</th><th>${L('วันที่', 'Date', '日期')}</th><th>${L('รหัส', 'ID', '工号')}</th><th>${L('ชื่อ', 'Name', '姓名')}</th><th>${L('กะ', 'Shift', '班别')}</th><th>${L('ประเภท OT', 'OT type', '加班类型')}</th><th class="text-end">${L('ชั่วโมง', 'Hours')}</th><th>${L('หมายเหตุ', 'Note', '备注')}</th></tr></thead><tbody>` +
+    h = (isUnlocked() ? selBar('otplan', rows.map(r => r.id)) : '') + `<table class="table table-sm table-hover align-middle mb-0"><thead class="table-success"><tr>${isUnlocked() ? `<th>${selHead('otplan')}</th>` : ''}<th>${L('วันที่', 'Date', '日期')}</th><th>${L('รหัส', 'ID', '工号')}</th><th>${L('ชื่อ', 'Name', '姓名')}</th><th>${L('กะ', 'Shift', '班别')}</th><th>${L('ประเภท OT', 'OT type', '加班类型')}</th><th class="text-end">${L('ชั่วโมง', 'Hours')}</th><th>${L('หมายเหตุ', 'Note', '备注')}</th></tr></thead><tbody>` +
       [...rows].sort((a, b) => otWho(a).name.localeCompare(otWho(b).name)).map(r => { const w = otWho(r);
-        return `<tr><td>${selChk('otplan', r.id)}</td><td>${ed('mp_ot_plans', r.id, 'plan_date', r.plan_date, 'date', 130)}</td><td>${xE(w.code)}</td><td>${xE(w.name)}</td><td>${ed('mp_ot_plans', r.id, 'shift', r.shift, 'text', 70)}</td><td>${ed('mp_ot_plans', r.id, 'ot_type', r.ot_type, 'text', 70)}</td><td class="text-end fw-bold">${isUnlocked() ? ed('mp_ot_plans', r.id, 'plan_hours', r.plan_hours, 'number', 70) : n2(Number(r.plan_hours)) + 'H'}</td><td class="small">${ed('mp_ot_plans', r.id, 'note', r.note, 'text', 110)}</td></tr>`; }).join('') + '</tbody></table>';
+        return `<tr>${isUnlocked() ? `<td>${selChk('otplan', r.id)}</td>` : ''}<td>${ed('mp_ot_plans', r.id, 'plan_date', r.plan_date, 'date', 130)}</td><td>${xE(w.code)}</td><td>${xE(w.name)}</td><td>${ed('mp_ot_plans', r.id, 'shift', r.shift, 'text', 70)}</td><td>${ed('mp_ot_plans', r.id, 'ot_type', r.ot_type, 'text', 70)}</td><td class="text-end fw-bold">${isUnlocked() ? ed('mp_ot_plans', r.id, 'plan_hours', r.plan_hours, 'number', 70) : n2(Number(r.plan_hours)) + 'H'}</td><td class="small">${ed('mp_ot_plans', r.id, 'note', r.note, 'text', 110)}</td></tr>`; }).join('') + '</tbody></table>';
   } else if (rows.length) {
     const dates = rows.map(r => r.plan_date).sort(), a = custom ? dates[0] : s, b = custom ? dates[dates.length - 1] : e, span = (new Date(b) - new Date(a)) / 864e5;
     let cols = [], colOf, lab;
@@ -2112,7 +2132,7 @@ i18n.zh = Object.assign({}, i18n.en, {"appTitle": "员工请假管理", "tabCard
 let pubTab = 'pdaily', pubBuilt = '', pdSub = 'form', pdA = '', calY = 0, calM = 0, calSel = '', reqRows = [], reqErr = '';
 const MONTHS = () => currentLang === 'th' ? ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'] : currentLang === 'zh' ? Array.from({ length: 12 }, (_, i) => (i + 1) + '月') : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const WDM = () => currentLang === 'th' ? ['จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.', 'อา.'] : currentLang === 'zh' ? ['一', '二', '三', '四', '五', '六', '日'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const planOpen = d => holKind(d) === 'custom' || [5, 6, 0].includes(dow(d));            // Fri / Sat / Sun + custom holidays
+const planOpen = d => !!holKind(d) || [5, 6, 0].includes(dow(d));            // Fri / Sat / Sun + every holiday (any weekday)
 const empByCode = c => { const k = String(c || '').trim().toLowerCase(); return k ? employeesData.find(e => String(e.empId).trim().toLowerCase() === k) : null; };
 function lookupName(inp, outId) {
   const e = empByCode(inp.value), o = byId(outId);
@@ -2140,16 +2160,16 @@ function buildPub() {
     <div id="pdForm" class="emp-card p-3">${DM_FORM.ot()}</div><div id="pdLog" class="d-none"></div>`;
   DM_INIT.ot(); pdSetSub(pdSub);
   byId('pubPlan').innerHTML = `${codeList()}<div class="row g-3"><div class="col-lg-7"><div class="emp-card p-3"><div id="calBox"></div>
-      <div class="small mt-2 d-flex flex-wrap gap-3 text-muted"><span><span style="display:inline-block;width:12px;height:12px;background:#dcfce7;border:1px solid #86efac;border-radius:3px"></span> ${L('ลงแพลนได้ (ศ./ส./อา.)', 'Open (Fri/Sat/Sun)', '可录入（周五/六/日）')}</span><span><span style="display:inline-block;width:12px;height:12px;background:#fed7aa;border-radius:3px"></span> ${L('วันหยุดเพิ่มเติม', 'Additional holiday', '额外假日')}</span><span><span style="display:inline-block;width:12px;height:12px;background:rgba(128,128,128,.2);border-radius:3px"></span> ${L('ไม่เปิดให้ลง', 'Not open', '不开放')}</span></div></div></div>
+      <div class="small mt-2 d-flex flex-wrap gap-3 text-muted"><span><span style="display:inline-block;width:12px;height:12px;background:#dcfce7;border:1px solid #86efac;border-radius:3px"></span> ${L('ลงแพลนได้ (ศ./ส./อา. และวันหยุดทุกวัน)', 'Open (Fri/Sat/Sun + all holidays)', '可录入（周五/六/日及所有假日）')}</span><span><span style="display:inline-block;width:12px;height:12px;background:#fde68a;border-radius:3px"></span> ${L('วันหยุดนักขัตฤกษ์', 'Public holiday', '法定假日')}</span><span><span style="display:inline-block;width:12px;height:12px;background:#bbf7d0;border-radius:3px"></span> ${L('วันหยุดชดเชย / พิเศษ', 'Substitute / special holiday', '补休 / 特别休假')}</span><span><span style="display:inline-block;width:12px;height:12px;background:#fed7aa;border-radius:3px"></span> ${L('วันหยุดเพิ่มเติม', 'Additional holiday', '额外假日')}</span><span><span style="display:inline-block;width:12px;height:12px;background:rgba(128,128,128,.2);border-radius:3px"></span> ${L('ไม่เปิดให้ลง', 'Not open', '不开放')}</span></div></div></div>
     <div class="col-lg-5"><div class="emp-card p-3" id="calDay"></div></div></div>
     <div class="emp-card p-3 mt-3" id="calList"></div>`;
   byId('pubLeave').innerHTML = `${codeList()}<div class="emp-card p-3" style="max-width:760px"><h6 class="fw-bold mb-3"><i class="bi bi-envelope-paper"></i> ${L('แบบฟอร์มขอลา', 'Leave request form', '请假申请表')}</h6>
     <div id="lrOk"></div><div class="row g-2">
     <div class="col-md-4"><label class="form-label small mb-0">${L('รหัสพนักงาน', 'Employee code', '工号')}</label><input id="lrCode" list="empCodes" class="form-control form-control-sm" autocomplete="off" oninput="lookupName(this,'lrName');lrCalc()"><div id="lrName" class="small fw-bold"></div></div>
     <div class="col-md-4"><label class="form-label small mb-0">${L('ประเภทวันลา', 'Leave type', '请假类别')}</label><select id="lrType" class="form-select form-select-sm">${Object.keys(LEAVE_LABELS).map(k => `<option value="${k}">${lvName(k)}</option>`).join('')}</select></div>
-    <div class="col-md-4"><label class="form-label small mb-0">${L('วันที่ลา', 'Leave date', '请假日期')}</label><input type="date" id="lrDate" class="form-control form-control-sm" onchange="lrCalc()"></div>
+    <div class="col-md-4"><label class="form-label small mb-0">${L('วันที่ลา', 'Leave date', '请假日期')}</label><input type="date" id="lrDate" class="form-control form-control-sm" onchange="lrCalc()" oninput="lrCalc()"></div>
     <div class="col-12"><div class="btn-group btn-group-sm mp-toggle" id="lrMode"><button class="btn btn-primary" data-a="1" onclick="lrSetMode(true)">${L('ลาทั้งวัน', 'All day', '全天')}</button><button class="btn btn-outline-primary" data-a="0" onclick="lrSetMode(false)">${L('เลือกช่วงเวลา', 'By time', '按时间段')}</button></div></div>
-    <div class="col-md-4" id="lrEndW"><label class="form-label small mb-0">${L('ถึงวันที่ (ถ้าลาหลายวัน)', 'Until (multi-day)', '至（多天）')}</label><input type="date" id="lrDate2" class="form-control form-control-sm" onchange="lrCalc()"></div>
+    <div class="col-md-4" id="lrEndW"><label class="form-label small mb-0">${L('ถึงวันที่ (ถ้าลาหลายวัน)', 'Until (multi-day)', '至（多天）')}</label><input type="date" id="lrDate2" class="form-control form-control-sm" onchange="lrCalc()" oninput="lrCalc()"></div>
     <div class="col-md-4 d-none" id="lrFromW"><label class="form-label small mb-0">${L('ตั้งแต่เวลา', 'From', '开始时间')}</label>${timeSel('lrFrom')}</div>
     <div class="col-md-4 d-none" id="lrToW"><label class="form-label small mb-0">${L('ถึงเวลา', 'To', '结束时间')}</label>${timeSel('lrTo')}</div>
     <div class="col-md-4"><label class="form-label small mb-0">${L('รวม (ชม.)', 'Total (h)', '合计(小时)')}</label><input id="lrHours" class="form-control form-control-sm" readonly></div>
@@ -2185,8 +2205,8 @@ function calRender() {
   for (let w = start; w <= end; w = addDays(w, 7)) {
     h += `<tr><td class="wk wk-lbl">${weekInfo(w).no}</td>`;
     for (let i = 0; i < 7; i++) {
-      const d = addDays(w, i), open = planOpen(d), k = holKind(d), bg = open ? (k === 'custom' ? '#fed7aa' : '') : '', n = cnt.get(d);
-      h += `<td><button type="button" class="dc${open ? '' : ' off'}${d.slice(0, 7) !== ym ? ' out' : ''}${d === calSel ? ' sel' : ''}${d === today ? ' today' : ''}" ${open ? `onclick="calPick('${d}')"` : 'disabled'} ${bg ? `style="background:${bg}"` : ''} title="${xE((customHols.find(x => x.holiday_date === d) || {}).name || '')}"><b>${+d.slice(8, 10)}</b>${n ? `<span class="n">${n}</span>` : ''}</button></td>`;
+      const d = addDays(w, i), open = planOpen(d), k = holKind(d), bg = open ? (HOL_BG[k] || '') : '', n = cnt.get(d);
+      h += `<td><button type="button" class="dc${open ? '' : ' off'}${d.slice(0, 7) !== ym ? ' out' : ''}${d === calSel ? ' sel' : ''}${d === today ? ' today' : ''}" ${open ? `onclick="calPick('${d}')"` : 'disabled'} ${bg ? `style="background:${bg}"` : ''} title="${xE(holName(d))}"><b>${+d.slice(8, 10)}</b>${k ? `<span style="display:block;font-size:9px;line-height:1.1;font-weight:600;overflow:hidden;max-height:22px">${xE(holName(d).split(' ').slice(0, 3).join(' '))}</span>` : ''}${n ? `<span class="n">${n}</span>` : ''}</button></td>`;
     }
     h += '</tr>';
   }
@@ -2195,8 +2215,8 @@ function calRender() {
 function calPick(d) { calSel = d; calRender(); calDayRender(); calListRender(); byId('calDay').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
 function calDayRender() {
   const box = byId('calDay'); if (!calSel) { box.innerHTML = `<div class="text-muted small">${L('แตะวันที่ในปฏิทิน (ศุกร์/เสาร์/อาทิตย์ หรือวันหยุดเพิ่มเติม) เพื่อลงแพลน OT ของวันนั้น', 'Tap a day in the calendar (Fri/Sat/Sun or a custom holiday) to enter its OT plan', '点击日历中的日期（周五/六/日或额外假日）录入当天加班计划')}</div>`; return; }
-  const d = calSel, ch = customHols.find(x => x.holiday_date === d);
-  box.innerHTML = `<h6 class="fw-bold mb-0"><i class="bi bi-pencil-square"></i> ${L('ฟอร์มลงแพลน OT', 'OT plan entry form', '录入加班计划')}</h6><div class="fw-bold mt-2">${fmtD(d)} <span class="text-muted">${WDM()[(dow(d) + 6) % 7]}</span>${ch ? ` <span class="badge" style="background:#fed7aa;color:#7c2d12">${xE(ch.name || '')}</span>` : ''}</div><div class="wk-lbl mb-2">${weekLabel(d)}</div>` +
+  const d = calSel, hk = holKind(d), hn = holName(d);
+  box.innerHTML = `<h6 class="fw-bold mb-0"><i class="bi bi-pencil-square"></i> ${L('ฟอร์มลงแพลน OT', 'OT plan entry form', '录入加班计划')}</h6><div class="fw-bold mt-2">${fmtD(d)} <span class="text-muted">${WDM()[(dow(d) + 6) % 7]}</span>${hk ? ` <span class="badge" style="background:${HOL_BG[hk]};color:#422006;white-space:normal;text-align:left">${xE(hn || L('วันหยุด', 'Holiday', '假日'))}</span>` : ''}</div><div class="wk-lbl mb-2">${weekLabel(d)}</div>` +
     `<div class="row g-2"><div class="col-6"><label class="form-label small mb-0">${L('รหัสพนักงาน', 'Employee code', '工号')}</label><input id="cdCode" list="empCodes" class="form-control form-control-sm" autocomplete="off" oninput="calLookup()"><div id="cdName" class="small fw-bold"></div></div>
     <div class="col-6"><label class="form-label small mb-0">${L('กะ', 'Shift', '班别')}</label>${shiftSel('cdShift', '')}</div>
     <div class="col-4"><label class="form-label small mb-0">${L('ชั่วโมง OT', 'OT hours', '加班小时')}</label><input type="number" id="cdH" step="0.5" min="0" class="form-control form-control-sm"></div>
@@ -2209,10 +2229,10 @@ function calListRender() {
   if (!calY) { const n = nowBkk(); calY = +n.slice(0, 4); calM = +n.slice(5, 7); }
   const ym = `${calY}-${p2(calM)}`, rows = planRows.filter(r => r.plan_date.slice(0, 7) === ym && Number(r.plan_hours) > 0).sort((a, b) => a.plan_date.localeCompare(b.plan_date) || otWho(a).name.localeCompare(otWho(b).name)), ppl = new Set(rows.map(r => otWho(r).key)).size; let wk = '';
   box.innerHTML = `<h6 class="fw-bold mb-1"><i class="bi bi-list-check"></i> ${L('แพลน OT ที่ลงแล้ว', 'Entered OT plans', '已录入的加班计划')} — ${MONTHS()[calM - 1]} ${currentLang === 'th' ? calY + 543 : calY}</h6>` +
-    (rows.length ? `<div class="wk-lbl mb-2">${L(`${rows.length} รายการ · ${ppl} คน`, `${rows.length} records · ${ppl} people`, `${rows.length} 条 · ${ppl} 人`)}</div>` + selBar('pplan', rows.map(r => r.id)) +
-      `<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0"><thead class="table-light"><tr><th>${selHead('pplan')}</th><th>${L('วันที่', 'Date', '日期')}</th><th>${L('รหัส', 'ID', '工号')}</th><th>${L('ชื่อ', 'Name', '姓名')}</th><th>${L('กะ', 'Shift', '班别')}</th><th class="text-end">h</th><th>${L('ประเภท OT', 'OT type', '加班类型')}</th><th>${L('หมายเหตุ', 'Note', '备注')}</th></tr></thead><tbody>` +
-      rows.map(r => { const w = otWho(r), lb = weekLabel(r.plan_date), head = lb !== wk ? `<tr><td colspan="8" class="wk-lbl border-0 pt-2 pb-0">${lb}</td></tr>` : ''; wk = lb;
-        return head + `<tr${r.plan_date === calSel ? ' class="table-active"' : ''}><td>${selChk('pplan', r.id)}</td><td>${fmtD(r.plan_date)} <span class="text-muted small">${WDM()[(dow(r.plan_date) + 6) % 7]}</span></td><td>${xE(w.code)}</td><td>${xE(w.name)}</td><td>${xE(r.shift || '')}</td><td class="text-end fw-bold">${n2(Number(r.plan_hours))}</td><td class="small">${xE(r.ot_type || '')}</td><td class="small">${xE(r.note || '')}</td></tr>`; }).join('') + '</tbody></table></div>'
+    (rows.length ? `<div class="wk-lbl mb-2">${L(`${rows.length} รายการ · ${ppl} คน`, `${rows.length} records · ${ppl} people`, `${rows.length} 条 · ${ppl} 人`)}</div>` + (isUnlocked() ? selBar('pplan', rows.map(r => r.id)) : '') +
+      `<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0"><thead class="table-light"><tr>${isUnlocked() ? `<th>${selHead('pplan')}</th>` : ''}<th>${L('วันที่', 'Date', '日期')}</th><th>${L('รหัส', 'ID', '工号')}</th><th>${L('ชื่อ', 'Name', '姓名')}</th><th>${L('กะ', 'Shift', '班别')}</th><th class="text-end">h</th><th>${L('ประเภท OT', 'OT type', '加班类型')}</th><th>${L('หมายเหตุ', 'Note', '备注')}</th></tr></thead><tbody>` +
+      rows.map(r => { const w = otWho(r), lb = weekLabel(r.plan_date), head = lb !== wk ? `<tr><td colspan="${isUnlocked() ? 8 : 7}" class="wk-lbl border-0 pt-2 pb-0">${lb}</td></tr>` : ''; wk = lb;
+        return head + `<tr${r.plan_date === calSel ? ' class="table-active"' : ''}>${isUnlocked() ? `<td>${selChk('pplan', r.id)}</td>` : ''}<td>${fmtD(r.plan_date)} <span class="text-muted small">${WDM()[(dow(r.plan_date) + 6) % 7]}</span></td><td>${xE(w.code)}</td><td>${xE(w.name)}</td><td>${xE(r.shift || '')}</td><td class="text-end fw-bold">${n2(Number(r.plan_hours))}</td><td class="small">${xE(r.ot_type || '')}</td><td class="small">${xE(r.note || '')}</td></tr>`; }).join('') + '</tbody></table></div>'
       : `<div class="text-muted small">${L('เดือนนี้ยังไม่มีใครลงแพลน OT', 'No OT plan entered for this month yet', '本月暂无加班计划')}</div>`);
 }
 function calLookup() { const e = lookupName(byId('cdCode'), 'cdName'); if (e) { const h = planHoursFor(e.schedule, calSel); if (h && !byId('cdH').value) byId('cdH').value = h; } }
@@ -2234,8 +2254,14 @@ function lrSetMode(all) {
 const lrAll = () => byId('lrMode').querySelector('.btn-primary').dataset.a === '1';
 function lrCalc() {
   const e = empByCode(byId('lrCode').value), d1 = byId('lrDate').value; let h = 0;
-  if (lrAll()) { const d2 = byId('lrDate2').value || d1; if (d1 && d2 >= d1) for (let d = d1; d <= d2; d = addDays(d, 1)) if (!e || !isOffDay(e.schedule, d)) h += HOURS_PER_DAY; }
+  if (lrAll()) {
+    const f2 = byId('lrDate2'); f2.min = d1 || '';
+    if (d1 && f2.value && f2.value < d1) f2.value = d1;      // "ถึงวันที่" < "วันที่ลา" -> auto-align
+    const d2 = f2.value || d1;
+    if (d1 && d2) h = (Math.round((new Date(d2) - new Date(d1)) / 864e5) + 1) * 8;   // 1 day = 8 h
+  }
   else { const a = timeVal('lrFrom'), b = timeVal('lrTo'), m = x => +x.slice(0, 2) * 60 + +x.slice(3, 5); if (a && b && m(b) > m(a)) h = Math.round((m(b) - m(a)) / 60 * 100) / 100; }
+  byId('lrHours').readOnly = true;
   byId('lrHours').value = h ? String(h) : ''; return h;
 }
 async function lrSubmit() {
@@ -2290,7 +2316,9 @@ async function reqDel(id) {
 /* ===== helpers: pick rows -> delete all picked at once · shift dropdown · 24-hour time ===== */
 const SHIFT_DEFAULT = ['Day', 'Night'];                     // <- edit / add the shift names you want in the dropdown
 const shiftList = () => [...new Set([...SHIFT_DEFAULT, ...otRows.map(r => r.shift), ...planRows.map(r => r.shift)].map(x => String(x || '').trim()).filter(Boolean))];
-const shiftSel = (id, val) => `<select id="${id}" class="form-select form-select-sm"><option value="">—</option>${shiftList().map(x => `<option value="${xE(x)}"${x === val ? ' selected' : ''}>${xE(x)}</option>`).join('')}</select>`;
+const SHIFT_OPTS = ['เช้า / Day', 'ดึก / Night'];
+const shiftNorm = v => { const t = String(v || '').trim().toLowerCase(); if (!t) return ''; if (t.includes('night') || t.includes('ดึก')) return SHIFT_OPTS[1]; if (t.includes('day') || t.includes('เช้า')) return SHIFT_OPTS[0]; return String(v).trim(); };
+const shiftSel = (id, val) => `<select id="${id}" class="form-select form-select-sm"><option value="">—</option>${SHIFT_OPTS.map(x => `<option value="${xE(x)}"${x === shiftNorm(val) ? ' selected' : ''}>${xE(x)}</option>`).join('')}</select>`;
 const timeSel = id => `<div class="d-flex align-items-center gap-1"><select id="${id}H" class="form-select form-select-sm" onchange="lrCalc()"><option value="">--</option>${Array.from({ length: 24 }, (_, i) => `<option value="${p2(i)}">${p2(i)}</option>`).join('')}</select><b>:</b><select id="${id}M" class="form-select form-select-sm" onchange="lrCalc()"><option value="">--</option>${Array.from({ length: 12 }, (_, i) => `<option value="${p2(i * 5)}">${p2(i * 5)}</option>`).join('')}</select></div>`;
 const timeVal = id => { const h = byId(id + 'H').value, m = byId(id + 'M').value; return h === '' ? '' : h + ':' + (m === '' ? '00' : m); };
 const SEL = {}, SELIDS = {};
@@ -2305,7 +2333,7 @@ function selBar(k, ids) {
   return `<div class="d-flex flex-wrap align-items-center gap-2 mb-2"><button class="btn btn-sm btn-outline-secondary" onclick="selAllTog('${k}',true)"><i class="bi bi-check2-square"></i> ${L('เลือกทั้งหมด', 'Select all', '全选')}</button><button class="btn btn-sm btn-outline-secondary" onclick="selAllTog('${k}',false)">${L('ยกเลิกที่เลือก', 'Clear selection', '取消选择')}</button><button class="btn btn-sm btn-danger" data-seldel="${k}" ${s.size ? '' : 'disabled'} onclick="selDelete('${k}')"><i class="bi bi-trash"></i> ${L('ลบที่เลือก', 'Delete selected', '删除所选')} (<span data-selcnt="${k}">${s.size}</span>)</button></div>`;
 }
 async function selDelete(k) {
-  const ids = [...selSet(k)]; if (!ids.length) return;
+  if (!isUnlocked()) return; const ids = [...selSet(k)]; if (!ids.length) return;
   if (!confirm(L(`ลบ ${ids.length} รายการที่เลือก?`, `Delete ${ids.length} selected record(s)?`, `删除所选 ${ids.length} 条记录？`) + (k === 'leavelog' ? '\n' + L('(ระบบจะคืนยอดวันลาให้)', '(leave days will be given back)', '(将退还请假天数)') : ''))) return;
   showLoader(true, L('กำลังลบ...', 'Deleting...', '正在删除...'));
   try {
@@ -2319,5 +2347,3 @@ async function selDelete(k) {
 </script>
 </body>
 </html>
-
-    
