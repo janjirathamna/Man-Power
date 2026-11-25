@@ -125,11 +125,12 @@
 .fs-title{text-align:center;font-size:26px;font-weight:700;margin-bottom:22px}.fs-sec{font-size:14px;font-weight:600;margin-bottom:26px}
 .fs-f{margin-bottom:26px}.fs-lb{font-size:15px;position:relative}.fs-lb .req{position:absolute;left:-13px;top:0;color:#f54a45}.fs-sub{font-size:13.5px;color:#646a73;margin-bottom:10px}
 .fs-in{width:100%;height:36px;border:1px solid #d0d3d6;border-radius:6px;padding:0 10px;font-size:14px;background:#fff;color:#1f2329}.fs-in:focus,.fs-person:focus-within{border-color:#3370ff;outline:none;box-shadow:0 0 0 1px #3370ff}
-.fs-person{background:#f2f3f5;border:1px solid #e5e6e8;border-radius:6px;padding:5px 10px;display:flex;align-items:center;gap:8px;min-height:38px}.fs-person input{border:0;background:transparent;width:120px;outline:none;font-size:14px;color:#1f2329}.fs-name{font-size:14px;font-weight:600}
+.fs-person{background:#f2f3f5;border:1px solid #e5e6e8;border-radius:6px;padding:5px 10px;display:flex;align-items:center;gap:8px;min-height:38px}.fs-person{cursor:text}.fs-person input{border:0;background:transparent;flex:1;min-width:70px;outline:none;font-size:14px;color:#1f2329}.fs-name{font-size:14px;font-weight:600}
 .fs-cal{position:absolute;right:10px;top:9px;color:#646a73;cursor:pointer}
 .fs-btn{display:block;margin:30px auto 0;width:200px;height:38px;background:#1f5df1;color:#fff;border:0;border-radius:6px;font-weight:600}.fs-btn:hover{background:#1a4fd0}
 .av{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;font-weight:700;position:relative;overflow:hidden;flex:none;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.18);vertical-align:middle}.av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .cal .avs{display:flex;margin-top:2px;padding-left:3px}.cal .avs .av{margin-left:-6px}.cal .avs .av:first-child{margin-left:0}.cal .avm{font-size:10px;margin-left:3px;align-self:center;color:#4c1d95;font-weight:700}
+.cal .dc.off.hasot{cursor:pointer!important}
 .cal .dc.off{background:#f6f2ff!important;color:#b9a8e0!important;border:1px dashed #dccff7!important}
 </style>
 </head>
@@ -288,6 +289,7 @@
       <div class="col-auto"><div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" id="otTeamOnly" checked onchange="renderOT()"><label class="form-check-label small" for="otTeamOnly" id="otTeamOnlyLbl"></label></div></div>
     </div>
     <div class="row g-3 mb-3" id="otKpi"></div>
+    <div class="row g-3 mb-3"><div class="col-lg-7"><div class="emp-card p-3"><div id="otCalBox"></div><div class="small mt-2 text-muted" id="otCalLegend"></div></div></div><div class="col-lg-5"><div class="emp-card p-3" id="otDayBox"></div></div></div>
     <div class="emp-card p-3"><div id="otTeam"></div></div>
   </div>
 
@@ -1408,7 +1410,7 @@ const DM_FORM = {
   ot: () => { const ft = (th, en) => L(th, en, en), f = (zh, sub, body, req) => `<div class="fs-f"><div class="fs-lb">${req ? '<span class="req">*</span>' : ''}${zh}</div><div class="fs-sub">${sub}</div>${body}</div>`; return `<datalist id="otfCodes">${employeesData.map(e => `<option value="${xE(e.empId)}">${xE(e.name)}</option>`).join('')}</datalist>
     <input type="hidden" id="otfEmp"><input type="hidden" id="otfDate"><input type="hidden" id="otfType" value="Usual"><input type="hidden" id="otfNote">
     <div class="fs-title">加班统计</div><div class="fs-sec">${ft('สรุปชั่วโมงโอที', 'OT hours summary')}</div>
-    ${f('人员', ft('พนักงาน', 'Employee'), `<div class="fs-person"><span id="otfAv"></span><input id="otfCode" list="otfCodes" autocomplete="off" placeholder="${ft('พิมพ์รหัสพนักงาน', 'Type employee code')}" oninput="otfPick()"><span id="otfName" class="fs-name"></span></div>`)}
+    ${f('人员', ft('พนักงาน', 'Employee'), `<div class="fs-person" onclick="byId('otfCode').focus()"><span id="otfAv"></span><input id="otfCode" list="otfCodes" autocomplete="off" placeholder="${ft('พิมพ์รหัสพนักงาน', 'Type employee code')}" oninput="otfPick()"><span id="otfName" class="fs-name"></span></div>`)}
     ${f('班别', 'Shift', `<select id="otfShift" class="fs-in"><option value="">${ft('โปรดเลือก', 'Please select')}</option>${SHIFT_OPTS.map(x => `<option value="${x}">${x}</option>`).join('')}</select>`, 1)}
     ${f('加班日期', ft('วันที่ทำงานล่วงเวลา', 'Overtime date'), `<div style="position:relative"><input id="otfDateTxt" class="fs-in" inputmode="numeric" placeholder="DD/MM/YYYY" maxlength="10" oninput="otfDateIn(this)"><i class="bi bi-calendar3 fs-cal" onclick="byId('otfDatePick').showPicker()"></i><input type="date" id="otfDatePick" tabindex="-1" style="position:absolute;right:0;bottom:0;width:1px;height:1px;opacity:0" onchange="otfDatePick(this.value)"></div>`, 1)}
     ${f('加班小时数', ft('จำนวนชั่วโมงทำงานล่วงเวลา', 'Overtime hours'), `<input id="otfHours" class="fs-in" inputmode="decimal" placeholder="${ft('พิมพ์ที่นี่', 'Type here')}" oninput="otfSum()">`, 1)}
@@ -1419,7 +1421,7 @@ const DM_INIT = {
   addEmp: () => {}, delEmp: () => {}, editEmp: () => eeFill(),
   quota: () => { renderQuota(); renderQuotaHist(); },
   leave: () => { byId('lvEmp').innerHTML = empOpts(); byId('lvType').innerHTML = Object.keys(LEAVE_LABELS).map(k => `<option value="${k}">${lvName(k)}</option>`).join(''); byId('lvDate').value = nowBkk(); renderLeaveHist(); },
-  ot: () => { }
+  ot: () => { otfDatePick(nowBkk()); }
 };
 function eeFill() { const e = employeesData.find(x => String(x.startRow) === byId('eeSel').value); if (!e) return; byId('eeAv').innerHTML = avHtml(e, 64); byId('eeCode').value = e.empId; byId('eeName').value = e.name; byId('eeNote').value = e.note || ''; byId('eeSched').value = e.schedule; }
 function eeFull() { const i = employeesData.findIndex(x => String(x.startRow) === byId('eeSel').value); if (i < 0) return; closeDataPanel(); setTimeout(() => openEditModal(i), 350); }
@@ -1532,7 +1534,7 @@ async function saveOtForm() {
     await supabaseClient.from('mp_ot_logs').insert({ employee_id: emp.startRow, emp_code: emp.empId, emp_name: emp.name, shift, ot_type: T(byId('otfType').value), note: T(byId('otfNote').value), ot_date: d, ot_hours: h, day_type: byId('otfDay').value, source: 'web' }).then(chk);
     return L('บันทึก OT แล้ว', 'OT saved');
   });
-  if (ok) { ['otfEmp', 'otfCode', 'otfDate', 'otfDateTxt', 'otfHours', 'otfShift', 'otfDay'].forEach(i => byId(i).value = ''); byId('otfAv').innerHTML = ''; byId('otfName').textContent = ''; if (byId('calBox').innerHTML) calRender(); }
+  if (ok) { ['otfEmp', 'otfCode', 'otfHours', 'otfShift', 'otfDay'].forEach(i => byId(i).value = ''); otfDatePick(nowBkk()); byId('otfAv').innerHTML = ''; byId('otfName').textContent = ''; if (byId('calBox').innerHTML) calRender(); }
 }
 
 /* ---------- importers (paste / file) ---------- */
@@ -2091,7 +2093,8 @@ function renderPersonLog() {
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closePersonLog(); });
 
 /* ===== admin OT tab: team overview - who logged OT each day / who is planned on which day ===== */
-let otTeamA = '', otTeamShow = 'all';
+let otTeamA = '', otTeamShow = 'all', otCalSel = '';
+function otCalPick(d) { otCalSel = d; renderOT(); }
 function otTeamStep(d) { otTeamA = shiftAnchor(otTeamA || nowBkk(), 'cycle', d); renderOT(); }
 function otTeamSet(k) { otTeamShow = k; renderOT(); }
 const empOfRow = r => employeesData.find(x => x.startRow === r.employee_id) || employeesData.find(x => String(x.empId).trim().toLowerCase() === String(r.emp_code || '').trim().toLowerCase());
@@ -2107,6 +2110,19 @@ function renderOT() {
   const nA = [...act.values()].reduce((t, a) => t + a.length, 0), hA = [...act.values()].flat().reduce((t, x) => t + (Number(x.r.ot_hours) || 0), 0), nP = [...pln.values()].reduce((t, a) => t + a.length, 0);
   const kp = (l, v, c) => `<div class="col-6 col-md-3"><div class="emp-card p-3"><div class="small text-muted">${l}</div><div class="fs-4 fw-bold ${c}">${v}</div></div></div>`;
   byId('otKpi').innerHTML = kp(L('วันที่มีการลง OT', 'Days with OT', '有加班的天数'), act.size, 'text-primary') + kp(L('จำนวนคน-วัน OT', 'OT person-days', '加班人天'), nA, 'text-primary') + kp(L('ชั่วโมง OT รวม', 'Total OT hours', '加班总小时'), n2(hA), 'text-success') + kp(L('แพลน OT (คน-วัน)', 'Planned (person-days)', '计划人天'), nP, 'text-purple" style="color:#7c3aed');
+  // calendar of the cycle: face stickers = who logged OT; purple number = planned people
+  if (!otCalSel || otCalSel < s || otCalSel > e) { const t = nowBkk(); otCalSel = t >= s && t <= e ? t : s; }
+  let ch = `<table class="cal"><thead><tr>${WDM().map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>`;
+  for (let w = mondayOf(s); w <= e; w = addDays(w, 7)) { ch += '<tr>'; for (let i = 0; i < 7; i++) { const d = addDays(w, i), inr = d >= s && d <= e, k = holKind(d), A = act.get(d) || [], P = pln.get(d) || [];
+    ch += `<td><button type="button" class="dc${inr ? '' : ' out'}${d === otCalSel ? ' sel' : ''}${d === nowBkk() ? ' today' : ''}" ${inr ? `onclick="otCalPick('${d}')"` : 'disabled'} style="background:${HOL_BG[k] || ([0, 6].includes(dow(d)) ? '#f6f2ff' : '#fff')};color:#1f2937" title="${xE(holName(d))}"><b>${+d.slice(8, 10)}</b>${k ? `<span style="display:block;font-size:9px;line-height:1.1;font-weight:600;overflow:hidden;max-height:22px">${xE(holName(d).split(' ').slice(0, 3).join(' '))}</span>` : ''}${A.length ? `<span class="avs">${A.slice(0, 3).map(x => avHtml(x.em, 20)).join('')}${A.length > 3 ? `<span class="avm">+${A.length - 3}</span>` : ''}</span>` : ''}${P.length ? `<span class="n" style="background:#7c3aed">${P.length}</span>` : ''}</button></td>`; } ch += '</tr>'; }
+  byId('otCalBox').innerHTML = ch + '</tbody></table>';
+  byId('otCalLegend').innerHTML = `<span class="badge" style="background:#7c3aed">n</span> = ${L('จำนวนคนที่แพลน OT', 'people planned', '计划人数')} &nbsp;·&nbsp; ${L('รูปหน้า = คนที่ลง OT แล้ว · กดวันเพื่อดูรายชื่อ', 'faces = people who logged OT · click a day for details', '头像=已录入加班 · 点击日期查看详情')}`;
+  { const d = otCalSel, A = (act.get(d) || []).sort((a, b) => a.em.name.localeCompare(b.em.name)), P = (pln.get(d) || []).sort((a, b) => a.em.name.localeCompare(b.em.name)), k = holKind(d);
+    const row = (x, kind) => { const h = kind === 'plan' ? x.r.plan_hours : x.r.ot_hours, done = kind === 'plan' && A.some(a => a.em.startRow === x.em.startRow);
+      return `<div class="d-flex align-items-center gap-2 mb-1" style="cursor:pointer" onclick="openPersonLog(${x.em.startRow}, '${s}', '${e}')">${avHtml(x.em, 28)}<div class="flex-grow-1"><b class="small">${xE(x.em.name)}</b> <span class="text-muted small">${xE(x.em.empId)}</span></div><span class="text-muted small">${shiftNorm(x.r.shift) ? shiftNorm(x.r.shift) + ' · ' : ''}${n2(Number(h))}h</span>${kind === 'plan' ? (done ? '<i class="bi bi-check-circle-fill text-success"></i>' : '<i class="bi bi-hourglass-split text-warning"></i>') : `<button class="btn btn-sm btn-outline-danger py-0" onclick="event.stopPropagation();otDel(${x.r.id})"><i class="bi bi-trash"></i></button>`}</div>`; };
+    byId('otDayBox').innerHTML = `<div class="fw-bold">${fmtD(d)} <span class="text-muted">${wdName(d)}</span>${k ? ` <span class="badge" style="background:${HOL_BG[k]};color:#422006;white-space:normal;text-align:left">${xE(holName(d))}</span>` : ''}</div>` +
+      `<h6 class="fw-bold mt-3 mb-2"><i class="bi bi-people-fill"></i> ${L('ลง OT แล้ว', 'OT logged', '已录入加班')} (${A.length} · ${n2(A.reduce((t, x) => t + (Number(x.r.ot_hours) || 0), 0))}h)</h6>` + (A.map(x => row(x, 'act')).join('') || `<div class="text-muted small">—</div>`) +
+      `<h6 class="fw-bold mt-3 mb-2"><i class="bi bi-calendar2-check"></i> ${L('แพลน OT', 'OT plan', '加班计划')} (${P.length})</h6>` + (P.map(x => row(x, 'plan')).join('') || `<div class="text-muted small">—</div>`); }
   const chip = (x, kind) => { const done = kind === 'plan' ? (act.get(x.r.plan_date) || []).some(a => a.em.startRow === x.em.startRow) : true, h = kind === 'plan' ? x.r.plan_hours : x.r.ot_hours, sh = shiftNorm(x.r.shift);
     const bg = kind === 'plan' ? '#f3ecff' : '#e8efff', bd = kind === 'plan' ? '#d9c7fb' : '#c6d6fb';
     return `<span class="d-inline-flex align-items-center gap-1 me-2 mb-1 px-2 py-1 rounded-pill" style="background:${bg};border:1px solid ${bd};cursor:pointer;font-size:13px" onclick="openPersonLog(${x.em.startRow}, '${s}', '${e}')" title="${xE(x.em.name)}">${avHtml(x.em, 22)}<span>${xE(x.em.name)}</span><span class="text-muted">${sh ? sh + ' · ' : ''}${n2(Number(h))}h</span>${kind === 'plan' ? (done ? '<i class="bi bi-check-circle-fill text-success" title="' + L('ลง OT แล้ว', 'OT logged', '已录入') + '"></i>' : '<i class="bi bi-hourglass-split text-warning" title="' + L('ยังไม่ลง OT', 'Not logged yet', '尚未录入') + '"></i>') : ''}</span>`; };
@@ -2360,16 +2376,23 @@ function calRender() {
     h += `<tr><td class="wk wk-lbl">${weekInfo(w).no}</td>`;
     for (let i = 0; i < 7; i++) {
       const d = addDays(w, i), open = planOpen(d), k = holKind(d), bg = open ? (HOL_BG[k] || '') : '', n = cnt.get(d);
-      h += `<td><button type="button" class="dc${open ? '' : ' off'}${d.slice(0, 7) !== ym ? ' out' : ''}${d === calSel ? ' sel' : ''}${d === today ? ' today' : ''}" ${open ? `onclick="calPick('${d}')"` : 'disabled'} ${bg ? `style="background:${bg}"` : ''} title="${xE(holName(d))}"><b>${+d.slice(8, 10)}</b>${k ? `<span style="display:block;font-size:9px;line-height:1.1;font-weight:600;overflow:hidden;max-height:22px">${xE(holName(d).split(' ').slice(0, 3).join(' '))}</span>` : ''}${who.has(d) ? `<span class="avs">${[...who.get(d).values()].slice(0, 3).map(e => avHtml(e, 20)).join('')}${who.get(d).size > 3 ? `<span class="avm">+${who.get(d).size - 3}</span>` : ''}</span>` : ''}${n ? `<span class="n">${n}</span>` : ''}</button></td>`;
+      h += `<td><button type="button" class="dc${open ? '' : ' off'}${!open && who.has(d) ? ' hasot' : ''}${d.slice(0, 7) !== ym ? ' out' : ''}${d === calSel ? ' sel' : ''}${d === today ? ' today' : ''}" ${open || who.has(d) ? `onclick="calPick('${d}')"` : 'disabled'} ${bg ? `style="background:${bg}"` : ''} title="${xE(holName(d))}"><b>${+d.slice(8, 10)}</b>${k ? `<span style="display:block;font-size:9px;line-height:1.1;font-weight:600;overflow:hidden;max-height:22px">${xE(holName(d).split(' ').slice(0, 3).join(' '))}</span>` : ''}${who.has(d) ? `<span class="avs">${[...who.get(d).values()].slice(0, 3).map(e => avHtml(e, 20)).join('')}${who.get(d).size > 3 ? `<span class="avm">+${who.get(d).size - 3}</span>` : ''}</span>` : ''}${n ? `<span class="n">${n}</span>` : ''}</button></td>`;
     }
     h += '</tr>';
   }
   byId('calBox').innerHTML = h + '</tbody></table>';
 }
 function calPick(d) { calSel = d; calRender(); calDayRender(); calListRender(); byId('calDay').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+
+function otDayBlock(d) {   // who logged OT on a day (public calendar + admin)
+  const rs = otRows.filter(r => r.ot_date === d).map(r => ({ r, e: empOfRow(r) })).filter(x => x.e).sort((a, b) => a.e.name.localeCompare(b.e.name));
+  return `<div class="mt-3 pt-2 border-top"><h6 class="fw-bold mb-2"><i class="bi bi-people-fill"></i> ${L('คนที่ลง OT วันนี้', 'Who worked OT today', '当天加班人员')} (${rs.length})</h6>` + (rs.map(x => `<div class="d-flex align-items-center gap-2 mb-1">${avHtml(x.e, 26)}<span class="fw-bold small">${xE(x.e.name)}</span><span class="text-muted small">${xE(shiftNorm(x.r.shift) || '')} · ${n2(Number(x.r.ot_hours))}h</span></div>`).join('') || `<div class="text-muted small">${L('ยังไม่มีใครลง OT', 'Nobody logged OT yet', '暂无加班记录')}</div>`) + '</div>';
+}
+function calHead(d) { const hk = holKind(d), hn = holName(d); return `<div class="fw-bold">${fmtD(d)} <span class="text-muted">${WDM()[(dow(d) + 6) % 7]}</span>${hk ? ` <span class="badge" style="background:${HOL_BG[hk]};color:#422006;white-space:normal;text-align:left">${xE(hn || L('วันหยุด', 'Holiday', '假日'))}</span>` : ''}</div><div class="wk-lbl">${weekLabel(d)}</div>`; }
 function calDayRender() {
   const box = byId('calDay'); if (!calSel) { box.innerHTML = `<div class="text-muted small">${L('แตะวันที่ในปฏิทิน (ศุกร์/เสาร์/อาทิตย์ หรือวันหยุดเพิ่มเติม) เพื่อลงแพลน OT ของวันนั้น', 'Tap a day in the calendar (Fri/Sat/Sun or a custom holiday) to enter its OT plan', '点击日历中的日期（周五/六/日或额外假日）录入当天加班计划')}</div>`; return; }
   const d = calSel, hk = holKind(d), hn = holName(d);
+  if (!planOpen(d)) { box.innerHTML = calHead(d) + `<div class="text-muted small mt-2">${L('วันนี้ไม่เปิดให้ลงแพลน OT', 'OT plans are not open for this day', '该日不开放加班计划')}</div>` + otDayBlock(d); return; }
   box.innerHTML = `<h6 class="fw-bold mb-0"><i class="bi bi-pencil-square"></i> ${L('ฟอร์มลงแพลน OT', 'OT plan entry form', '录入加班计划')}</h6><div class="fw-bold mt-2">${fmtD(d)} <span class="text-muted">${WDM()[(dow(d) + 6) % 7]}</span>${hk ? ` <span class="badge" style="background:${HOL_BG[hk]};color:#422006;white-space:normal;text-align:left">${xE(hn || L('วันหยุด', 'Holiday', '假日'))}</span>` : ''}</div><div class="wk-lbl mb-2">${weekLabel(d)}</div>` +
     `<div class="row g-2"><div class="col-6"><label class="form-label small mb-0">${L('รหัสพนักงาน', 'Employee code', '工号')}</label><input id="cdCode" list="empCodes" class="form-control form-control-sm" autocomplete="off" oninput="calLookup()"><div id="cdName" class="small fw-bold"></div></div>
     <div class="col-6"><label class="form-label small mb-0">${L('กะ', 'Shift', '班别')}</label>${shiftSel('cdShift', '')}</div>
@@ -2377,6 +2400,7 @@ function calDayRender() {
     <div class="col-4"><label class="form-label small mb-0">${L('ประเภท OT', 'OT type', '加班类型')}</label><input id="cdType" value="Usual" class="form-control form-control-sm"></div>
     <div class="col-4"><label class="form-label small mb-0">${L('หมายเหตุ', 'Note', '备注')}</label><input id="cdNote" class="form-control form-control-sm"></div></div>
     <button class="btn btn-success btn-sm mt-2" onclick="calSave()">＋ ${L('เพิ่มแพลนวันนี้', 'Add plan for this day', '添加当天计划')}</button>`;
+  box.insertAdjacentHTML('beforeend', otDayBlock(d));
 }
 function calListRender() {
   const box = byId('calList'); if (!box) return;
