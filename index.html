@@ -168,7 +168,7 @@
           <i class="bi bi-grid-fill"></i> <span data-i18n="tabCards">รายบุคคล</span>
         </button>
         <button type="button" class="btn btn-outline-primary btn-sm" id="btnTabOverview" onclick="switchTab('overview')">
-          <i class="bi bi-bar-chart-fill"></i> <span data-i18n="tabOverview">ภาพรวมเปรียบเทียบ</span>
+          <i class="bi bi-bar-chart-fill"></i> <span data-i18n="tabOverview">ภาพรวม</span>
         </button>
         <button type="button" class="btn btn-primary btn-sm d-none" id="btnPubDaily" onclick="switchTab('pdaily')"><i class="bi bi-clock-history"></i> <span id="tPubDaily"></span></button>
         <button type="button" class="btn btn-outline-primary btn-sm d-none" id="btnPubPlan" onclick="switchTab('pplan')"><i class="bi bi-calendar3"></i> <span id="tPubPlan"></span></button>
@@ -228,9 +228,6 @@
 
   <div id="viewLeave">
     <div id="filterBar" class="row g-2 mb-3 align-items-center">
-      <div class="col-auto">
-        <button class="btn btn-success btn-sm fw-bold" onclick="openDataModal('leave')"><i class="bi bi-plus-lg"></i> <span data-i18n="btnAddData">Add Data</span></button>
-      </div>
       <div class="col-md-3">
         <div class="input-group input-group-sm">
           <span class="input-group-text"><i class="bi bi-search"></i></span>
@@ -243,13 +240,6 @@
           <option value="mostUsed" data-i18n="sortMost">ลาบ่อยสุด (ดัชนีการลา % สูง -> ต่ำ)</option>
           <option value="leastUsed" data-i18n="sortLeast">ลาน้อยสุด (ดัชนีการลา % ต่ำ -> สูง)</option>
         </select>
-      </div>
-      <div class="col-md-3">
-        <div class="btn-group btn-group-sm mp-toggle" id="lvViews">
-          <button type="button" class="btn btn-primary" data-v="cards" onclick="lvSetView('cards')"><i class="bi bi-grid-fill"></i> <span data-i18n="vwCards">การ์ด</span></button>
-          <button type="button" class="btn btn-outline-primary" data-v="table" onclick="lvSetView('table')"><i class="bi bi-table"></i> <span data-i18n="vwTable">ตาราง</span></button>
-          <button type="button" class="btn btn-outline-primary" data-v="summary" onclick="lvSetView('summary')"><i class="bi bi-people-fill"></i> <span data-i18n="vwSummary">สรุปรายคน</span></button>
-        </div>
       </div>
       <div class="col-md-3 text-md-end small text-muted">
         <span class="me-2"><i class="bi bi-circle-fill" style="color:var(--color-low)"></i> <span data-i18n="legendLow">&lt; 50% ปกติ</span></span>
@@ -267,7 +257,7 @@
   <div id="viewDash" class="d-none"></div>
   <div id="viewLog" class="d-none"></div>
 
-  <!-- แท็บ: ภาพรวมเปรียบเทียบ -->
+  <!-- แท็บ: ภาพรวม -->
   <div id="viewOverview" class="d-none">
     <div class="row g-2 mb-3 align-items-center">
       <div class="col-auto"><div class="btn-group btn-group-sm mp-toggle" id="ovModes">
@@ -286,36 +276,19 @@
     </div>
     <div class="row g-3 mb-4" id="kpiSection"></div>
     <div class="row g-4">
-      <div class="col-12"><div class="emp-card p-4 h-100"><h5 class="fw-bold mb-1" id="ovH1"></h5><p class="text-muted small mb-3" id="ovP1"></p><div id="ovOtBox"><canvas id="ovOtChart"></canvas></div></div></div>
-      <div class="col-lg-6"><div class="emp-card p-4 h-100"><h5 class="fw-bold mb-1" id="ovH2"></h5><p class="text-muted small mb-3" id="ovP2"></p><div id="ovLvBox"><canvas id="overviewBarChart"></canvas></div></div></div>
-      <div class="col-lg-4"><div class="emp-card p-4 h-100"><h5 class="fw-bold mb-1" id="ovH3"></h5><p class="text-muted small mb-3" id="ovP3"></p><div style="height:300px" class="d-flex align-items-center justify-content-center"><canvas id="overviewPieChart"></canvas></div></div></div>
+      <div class="col-12"><div class="emp-card p-4 h-100"><h5 class="fw-bold mb-1" id="ovH1"></h5><p class="text-muted small mb-2" id="ovP1"></p><div class="d-flex align-items-center flex-wrap gap-2 mb-2"><span class="small text-muted"><i class="bi bi-sort-down"></i> <span id="ovSortLbl"></span></span><div class="btn-group btn-group-sm" id="ovSortBtns"></div></div><div id="ovOtBox"><canvas id="ovOtChart"></canvas></div></div></div>
     </div>
   </div>
 
   <!-- แท็บ: OT -->
   <div id="viewOT" class="d-none">
     <div class="row g-2 mb-3 align-items-center">
-      <div class="col-auto"><div class="btn-group btn-group-sm mp-toggle" id="otViews">
-        <button class="btn btn-primary" data-v="actual" onclick="otSetView('actual')" data-i18n="btnOtDaily">ลง OT ประจำวัน</button>
-        <button class="btn btn-outline-primary" data-v="plan" onclick="otSetView('plan')" data-i18n="btnOtPlan">ลงแพลน OT วันหยุด</button>
-      </div></div>
-      <div class="col-auto"><button class="btn btn-success btn-sm fw-bold" onclick="otOpenEntry()"><i class="bi bi-plus-lg"></i> <span data-i18n="btnAddData">Add Data</span></button></div>
-      <div class="col-auto"><div class="btn-group btn-group-sm mp-toggle" id="otModes">
-        <button class="btn btn-primary" data-m="day" onclick="otMode('day')" data-i18n="otDay">รายวัน</button>
-        <button class="btn btn-outline-primary" data-m="week" onclick="otMode('week')" data-i18n="otWeek">รายสัปดาห์</button>
-        <button class="btn btn-outline-primary" data-m="month" onclick="otMode('month')" data-i18n="otMonth">รายเดือน</button>
-        <button class="btn btn-outline-primary" data-m="year" onclick="otMode('year')" data-i18n="otYear">รายปี</button>
-      </div></div>
-      <div class="col-auto"><div class="btn-group btn-group-sm">
-        <button class="btn btn-outline-secondary" onclick="otStep(-1)"><i class="bi bi-chevron-left"></i></button>
-        <input type="date" id="otAnchor" class="form-control form-control-sm" style="width:auto;border-radius:0" onchange="otSetAnchor(this.value)">
-        <button class="btn btn-outline-secondary" onclick="otStep(1)"><i class="bi bi-chevron-right"></i></button>
-      </div></div>
-      <div class="col-auto"><select id="otEmp" class="form-select form-select-sm" onchange="renderOT()"></select></div>
-      <div class="col text-muted small" id="otRange"></div>
+      <div class="col-auto"><div class="btn-group btn-group-sm" id="otTeamShow"></div></div>
+      <div class="col-auto"><div class="btn-group btn-group-sm"><button class="btn btn-outline-secondary" onclick="otTeamStep(-1)"><i class="bi bi-chevron-left"></i></button><span class="btn btn-outline-secondary disabled fw-bold" id="otTeamRange" style="opacity:1"></span><button class="btn btn-outline-secondary" onclick="otTeamStep(1)"><i class="bi bi-chevron-right"></i></button></div></div>
+      <div class="col-auto"><div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" id="otTeamOnly" checked onchange="renderOT()"><label class="form-check-label small" for="otTeamOnly" id="otTeamOnlyLbl"></label></div></div>
     </div>
     <div class="row g-3 mb-3" id="otKpi"></div>
-    <div class="emp-card p-3"><div class="table-responsive" id="otTable"></div></div>
+    <div class="emp-card p-3"><div id="otTeam"></div></div>
   </div>
 
 </div>
@@ -517,7 +490,7 @@ async function loadLeaveData(withLeaves = true) {
     th: {
       appTitle: 'ระบบติดตามวันลาพนักงาน',
       tabCards: 'รายบุคคล',
-      tabOverview: 'ภาพรวมเปรียบเทียบ',
+      tabOverview: 'ภาพรวม',
       btnAdd: 'เพิ่มพนักงาน',
       btnSettings: 'ตั้งค่า',
       menuExport: 'Export',
@@ -919,7 +892,8 @@ async function callGasApi(action, payload) {
   let overviewBar = null;
   let overviewPie = null;
 
-  let overviewOt = null, ovM = 'cycle', ovA = '';
+  let overviewOt = null, ovM = 'cycle', ovA = '', ovSort = 'ot';
+  function ovSortSet(k) { ovSort = k; renderOverview(); }
   function shiftAnchor(a, m, dir) {
     const d = new Date(a + 'T00:00:00Z');
     if (m === 'day') d.setUTCDate(d.getUTCDate() + dir); else if (m === 'week') d.setUTCDate(d.getUTCDate() + 7 * dir);
@@ -962,29 +936,21 @@ async function callGasApi(action, payload) {
 
     const dm = x => x.slice(8, 10) + '/' + x.slice(5, 7); byId('ovH1').textContent = `${dm(s)}--${dm(e)} ` + L('สรุประยะเวลาการทำ OT และการลา', 'OT and leave hours summary', '加班与请假时长汇总');
     byId('ovP1').textContent = L('กดที่แท่งกราฟเพื่อดู Log วันที่ทำ OT / ลา ของแต่ละคน', 'Click a bar to see each person’s OT / leave days', '点击柱状图查看每人加班/请假明细');
-    byId('ovH2').textContent = L('เปรียบเทียบการใช้วันลา (%)', 'Leave usage by person (%)', '各人请假使用率（%）');
-    byId('ovP2').textContent = L('% ของโควต้า เฉลี่ยทุกประเภทลา เหมือนการ์ดรายคน · นับจาก Log วันลาในช่วงที่เลือก', 'Avg. % of quota over leave types, like the person cards · from leave log in the selected period', '占额度百分比（各假别平均），同个人卡片 · 按所选期间请假记录');
-    byId('ovH3').textContent = t.chartTypeTitle; byId('ovP3').textContent = L('ค่าเฉลี่ย % การใช้โควต้าแยกตามประเภท (ช่วงที่เลือก)', 'Avg. quota usage % by type (selected period)', '各假别平均额度使用率（所选期间）');
     const hBox = n => Math.max(260, n * 26 + 50) + 'px';
-    byId('ovOtBox').style.height = '400px'; byId('ovLvBox').style.height = hBox(lvList.length);
+    byId('ovOtBox').style.height = '400px';
 
     if (overviewOt) overviewOt.destroy();
     const lh = new Map(); leaveLogs.forEach(r => { if (r.leave_date >= s && r.leave_date <= e) lh.set(r.employee_id, (lh.get(r.employee_id) || 0) + (Number(r.hours) || 0)); });
     const cl = employeesData.map(emp => { const oh = otRows.filter(r => (r.employee_id === emp.startRow || String(r.emp_code || '').trim().toLowerCase() === String(emp.empId).trim().toLowerCase()) && r.ot_date >= s && r.ot_date <= e).reduce((t, r) => t + (Number(r.ot_hours) || 0), 0); return { emp, oh, lh: lh.get(emp.startRow) || 0 }; })
-      .filter(x => x.oh > 0 || x.lh > 0).sort((a, b) => String(a.emp.empId).localeCompare(String(b.emp.empId)));
-    const valLbl = { id: 'valLbl', afterDatasetsDraw(ch) { const c = ch.ctx; c.save(); c.font = '11px sans-serif'; c.textAlign = 'center'; ch.data.datasets.forEach((ds, i) => ch.getDatasetMeta(i).data.forEach((b, j) => { const v = ds.data[j]; if (!v) return; c.fillStyle = ds.backgroundColor; c.fillText(Number(v).toFixed(1), b.x, b.y - 4); })); c.restore(); } };
-    overviewOt = new Chart(byId('ovOtChart'), { type: 'bar', plugins: [valLbl], data: { labels: cl.map(x => x.emp.empId), datasets: [{ label: L('ชั่วโมง OT', 'OT hours', '加班小时数'), data: cl.map(x => n2(x.oh)), backgroundColor: '#4f7df3', borderRadius: 3, maxBarThickness: 26 }, { label: L('เวลาลา', 'Leave hours', '请假时间'), data: cl.map(x => n2(x.lh)), backgroundColor: '#f87171', borderRadius: 3, maxBarThickness: 26 }] },
+      .filter(x => x.oh > 0 || x.lh > 0).sort((a, b) => ovSort === 'leave' ? (b.lh - a.lh || b.oh - a.oh) : (b.oh - a.oh || b.lh - a.lh));
+    byId('ovSortLbl').textContent = L('เรียงจากมากไปน้อยตาม', 'Sort high → low by', '按以下排序(从多到少)');
+    byId('ovSortBtns').innerHTML = [['ot', L('OT มากสุด', 'Most OT', '加班最多')], ['leave', L('ลามากสุด', 'Most leave', '请假最多')]].map(([k, t]) => `<button class="btn ${ovSort === k ? 'btn-primary' : 'btn-outline-primary'}" onclick="ovSortSet('${k}')">${t}</button>`).join('');
+    const valLbl = { id: 'valLbl', afterDatasetsDraw(ch) { const c = ch.ctx; c.save(); c.font = '11px sans-serif'; c.textAlign = 'center'; ch.data.datasets.forEach((ds, i) => ch.getDatasetMeta(i).data.forEach((b, j) => { const v = ds.data[j]; if (!v) return; c.fillStyle = ds.lblColor || ds.backgroundColor; c.fillText(Number(v).toFixed(1), b.x, b.y - 4); })); c.restore(); } };
+    overviewOt = new Chart(byId('ovOtChart'), { type: 'bar', plugins: [valLbl], data: { labels: cl.map(x => x.emp.empId), datasets: [{ label: L('ชั่วโมง OT', 'OT hours', '加班小时数'), data: cl.map(x => n2(x.oh)), backgroundColor: ovSort === 'ot' ? '#4f7df3' : '#c9d7fb', lblColor: ovSort === 'ot' ? '#4f7df3' : '#93a8dc', borderRadius: 3, maxBarThickness: 26 }, { label: L('เวลาลา', 'Leave hours', '请假时间'), data: cl.map(x => n2(x.lh)), backgroundColor: ovSort === 'leave' ? '#f87171' : '#fcd0d0', lblColor: ovSort === 'leave' ? '#f87171' : '#e0a0a0', borderRadius: 3, maxBarThickness: 26 }] },
       options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 18 } }, interaction: { mode: 'index', intersect: false }, onHover: (ev, els) => { ev.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
         onClick: (ev, els) => { if (els.length) openPersonLog(cl[els[0].index].emp.startRow, s, e); },
         plugins: { legend: { position: 'top', align: 'start', labels: { usePointStyle: true, boxWidth: 8 } }, tooltip: { callbacks: { title: it => { const x = cl[it[0].dataIndex]; return x.emp.empId + ' · ' + x.emp.name; }, label: c => ` ${c.dataset.label}: ${Number(c.raw).toFixed(1)}` } } },
         scales: { x: { grid: { display: false }, ticks: { maxRotation: 50, minRotation: 45 } }, y: { beginAtZero: true } } } });
-    if (overviewBar) overviewBar.destroy();
-    overviewBar = new Chart(byId('overviewBarChart'), { type: 'bar', data: { labels: lvList.map(x => x.name), datasets: [{ data: lvList.map(x => x.avg), backgroundColor: lvList.map(x => getBarColor(x.avg)), borderRadius: 6 }] },
-      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => { const x = lvList[c.dataIndex]; return ` ${x.avg}% (${n2(x.days)} ${t.days})`; } } } }, scales: { x: { beginAtZero: true, ticks: { callback: v => v + '%' } } } } });
-    const av = k => cntT[k] ? Math.round(sumT[k] / cntT[k] * 10) / 10 : 0;
-    if (overviewPie) overviewPie.destroy();
-    overviewPie = new Chart(byId('overviewPieChart'), { type: 'doughnut', data: { labels: [`${t.typeAnnual} (${av('annual')}%)`, `${t.typePersonal} (${av('personal')}%)`, `${t.typeSick} (${av('sick')}%)`], datasets: [{ data: [av('annual'), av('personal'), av('sick')], backgroundColor: ['#3b82f6', '#a855f7', '#ec4899'], borderWidth: 2 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: c => ` ${c.label}` } } } } });
   }
 
   function resetNewYearLeave() {
@@ -1902,7 +1868,7 @@ function renderOtLog() {                                   // before login: who 
       rows.map(r => { const w = otWho(r); return `<tr><td>${fmtD(r[dk])} <span class="text-muted small">${wdName(r[dk])}</span></td><td>${xE(w.code)}</td><td>${xE(w.name)}</td><td>${xE(r.shift || '')}</td><td>${xE(plan ? (r.ot_type || '') : otT(dayKind(r.day_type)))}</td><td class="text-end fw-bold">${n2(Number(r[hk]) || 0)}</td><td class="small">${xE(r.note || '')}</td>${ts ? `<td class="small text-muted">${r.created_at ? fm(r.created_at) : ''}</td>` : ''}</tr>`; }).join('') + '</tbody></table>'
     : `<div class="text-muted p-3">${plan ? L('สัปดาห์นี้ยังไม่มีใครลงแพลน OT', 'No OT plan entered for this week yet', '本周暂无加班计划') : L('วันนี้ยังไม่มีใครลง OT', 'No OT entered for this day yet', '当日暂无加班记录')}</div>`;
 }
-function renderOT() {
+function renderOT_legacy() {
   const u0 = isUnlocked();
   if (!u0) { otM = otView === 'plan' ? 'week' : 'day'; rFrom = ''; rTo = ''; }
   [byId('otKpi'), byId('otModes').parentElement, byId('otEmp').parentElement].forEach(el => el.classList.toggle('d-none', !u0));   // before login: no summaries / filters, only the log
@@ -1968,12 +1934,12 @@ async function saveQuotas() {
 }
 
 /* ---------- date range filter (OT + leave summary / log) ---------- */
-let rFrom = '', rTo = '', curTab = 'cards', lvView = 'cards', logKind = 'leave';
+let rFrom = '', rTo = '', curTab = 'cards', lvView = 'summary', logKind = 'leave';
 const inRg = d => d && (!rFrom || d >= rFrom) && (!rTo || d <= rTo);
 const bkkDate = ts => ts ? new Date(new Date(ts).getTime() + 7 * 36e5).toISOString().slice(0, 10) : '';
 function otEffRange() { return (rFrom || rTo) ? [rFrom || '0000-01-01', rTo || '9999-12-31'] : otRange(otM, otA); }
 function syncRangeBar() {
-  const show = curTab === 'ot' || curTab === 'log' || (curTab === 'cards' && lvView === 'summary');
+  const show = curTab === 'log' || (curTab === 'cards' && lvView === 'summary');
   byId('rangeBar').classList.toggle('d-none', !show || !isUnlocked());
   byId('rgHint').textContent = curTab === 'ot'
     ? ((rFrom || rTo) ? L('กำลังใช้ช่วงวันที่กำหนดเอง (ปุ่ม ◀ ▶ ไม่มีผล)', 'Custom range active (◀ ▶ disabled)') : L('ว่าง = ใช้ช่วงตามรายวัน/สัปดาห์/เดือน/ปี', 'Empty = follow the day / week / month / year view'))
@@ -2071,11 +2037,13 @@ function renderDash() {
     const rs = pWeek.filter(r => r.plan_date === d), k = holKind(d), nm = holName(d); if (!rs.length && !k) return '';
     return `<div class="mb-2"><div class="fw-bold small" style="background:${HOL_BG[k] || '#f3f4f6'};color:#1f2937;border-radius:6px;padding:2px 8px">${fmtD(d)} ${WDM()[(dow(d) + 6) % 7]}${d === today ? ' · ' + L('วันนี้', 'Today', '今天') : ''}${nm ? ' · ' + xE(nm.split(' ').slice(0, 4).join(' ')) : ''} <span class="float-end">${rs.length ? rs.length + ' ' + L('คน', 'ppl', '人') + ' · ' + hSum(rs) + 'h' : '—'}</span></div>` +
       rs.map(r => { const w = otWho(r); return `<div class="small ps-2 py-1 border-bottom">${xE(w.name)} <span class="text-muted">${xE(r.shift || '')}</span> <b class="float-end">${n2(Number(r.plan_hours))}h</b></div>`; }).join('') + '</div>'; }).join('') || `<div class="text-muted small">${L('ยังไม่มีแพลน OT ใน 7 วันข้างหน้า', 'No OT plans in the next 7 days', '未来7天暂无加班计划')}</div>`;
+  const dmIc = { addEmp: 'bi-person-plus', delEmp: 'bi-person-dash', editEmp: 'bi-person-gear', quota: 'bi-sliders', leave: 'bi-calendar-plus', plan: 'bi-calendar2-plus' };
+  const manage = `<div class="emp-card p-3 mb-3"><h6 class="fw-bold"><i class="bi bi-database-gear"></i> ${L('จัดการข้อมูล (เพิ่ม / แก้ไข)', 'Manage data (add / edit)', '数据管理(添加/修改)')}</h6><div class="d-grid gap-2" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">${dmModes().map(([k, [a, b]]) => `<button class="btn btn-outline-success text-start" onclick="openDataModal('${k}')"><i class="bi ${dmIc[k] || 'bi-plus-lg'}"></i> ${L(a, b)}</button>`).join('')}</div></div>`;
   const qa = (icon, label, act, tone = 'outline-primary') => `<button class="btn btn-${tone} text-start" onclick="${act}"><i class="bi ${icon}"></i> ${label}</button>`;
   box.innerHTML = `<div class="d-flex justify-content-between align-items-end mb-3 flex-wrap"><div><h5 class="fw-bold mb-0"><i class="bi bi-speedometer2"></i> ${L('แดชบอร์ดแอดมิน', 'Admin dashboard', '管理员面板')}</h5><div class="small text-muted">${fmtD(today)} ${wdName(today)}</div></div><button class="btn btn-sm btn-outline-secondary" onclick="reloadAll()"><i class="bi bi-arrow-clockwise"></i> ${L('รีเฟรช', 'Refresh', '刷新')}</button></div>` +
     `<div class="row g-3 mb-3">${dashKpi('bi-envelope-paper', L('คำร้องลารออนุมัติ', 'Pending leave', '待审批请假'), pend.length, L('กดเพื่อไปตรวจสอบ', 'Click to review', '点击查看'), "goLog('req')", pend.length ? '#dc2626' : '#16a34a')}${dashKpi('bi-calendar-check', L('แพลน OT วันนี้', 'OT plan today', '今日加班计划'), pToday.length, hSum(pToday) + ' h', "goLog('plan')", '#2563eb')}${dashKpi('bi-calendar-week', L('แพลน OT 7 วัน', 'OT plan 7 days', '7天加班计划'), pWeek.length, hSum(pWeek) + ' h', "goLog('plan')", '#7c3aed')}${dashKpi('bi-clock-history', L('OT ที่ลงวันนี้', 'OT logged today', '今日已录加班'), otToday.length, n2(otToday.reduce((t, r) => t + (Number(r.ot_hours) || 0), 0)) + ' h', "goLog('ot')", '#ea580c')}</div>` +
-    `<div class="row g-3"><div class="col-lg-7"><div class="emp-card p-3 mb-3"><h6 class="fw-bold"><i class="bi bi-inbox"></i> ${L('งานรออนุมัติ', 'Needs approval', '待办审批')} (${pend.length})</h6>${reqList}</div>` +
-    `<div class="emp-card p-3"><h6 class="fw-bold"><i class="bi bi-lightning-charge"></i> ${L('ทางลัด', 'Shortcuts', '快捷入口')}</h6><div class="d-grid gap-2" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">${qa('bi-pencil-square', L('จัดการแพลน OT (แก้ไข/ลบ)', 'Manage OT plans (edit/delete)', '管理加班计划'), "goLog('plan')", 'primary')}${qa('bi-list-check', L('OT log (แก้ไข/ลบ)', 'OT log (edit/delete)', '加班记录'), "goLog('ot')")}${qa('bi-journal-text', L('ประวัติการลา', 'Leave history', '请假记录'), "goLog('leave')")}${qa('bi-grid-fill', L('รายบุคคล / โควต้า', 'Per person / quota', '个人 / 额度'), "switchTab('cards')")}${qa('bi-bar-chart-fill', L('ภาพรวมเปรียบเทียบ', 'Overview', '总览'), "switchTab('overview')")}${qa('bi-clock-history', L('รายงาน OT', 'OT reports', '加班报表'), "switchTab('ot')")}${qa('bi-gear', L('ตั้งค่า (พนักงาน/วันหยุด)', 'Settings (staff/holidays)', '设置'), "byId('btnSettingsTop').click()", 'outline-secondary')}</div></div></div>` +
+    `<div class="row g-3"><div class="col-lg-7"><div class="emp-card p-3 mb-3"><h6 class="fw-bold"><i class="bi bi-inbox"></i> ${L('งานรออนุมัติ', 'Needs approval', '待办审批')} (${pend.length})</h6>${reqList}</div>` + manage +
+    `<div class="emp-card p-3"><h6 class="fw-bold"><i class="bi bi-lightning-charge"></i> ${L('ทางลัด', 'Shortcuts', '快捷入口')}</h6><div class="d-grid gap-2" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">${qa('bi-pencil-square', L('จัดการแพลน OT (แก้ไข/ลบ)', 'Manage OT plans (edit/delete)', '管理加班计划'), "goLog('plan')", 'primary')}${qa('bi-list-check', L('OT log (แก้ไข/ลบ)', 'OT log (edit/delete)', '加班记录'), "goLog('ot')")}${qa('bi-journal-text', L('ประวัติการลา', 'Leave history', '请假记录'), "goLog('leave')")}${qa('bi-grid-fill', L('รายบุคคล / โควต้า', 'Per person / quota', '个人 / 额度'), "switchTab('cards')")}${qa('bi-bar-chart-fill', L('ภาพรวม', 'Overview', '总览'), "switchTab('overview')")}${qa('bi-clock-history', L('ภาพรวมการลง OT ทีม', 'Team OT overview', '团队加班总览'), "switchTab('ot')")}${qa('bi-gear', L('ตั้งค่า (พนักงาน/วันหยุด)', 'Settings (staff/holidays)', '设置'), "byId('btnSettingsTop').click()", 'outline-secondary')}</div></div></div>` +
     `<div class="col-lg-5"><div class="emp-card p-3"><h6 class="fw-bold"><i class="bi bi-calendar3"></i> ${L('แพลน OT 7 วันข้างหน้า', 'OT plans – next 7 days', '未来7天加班计划')}</h6>${planList}<button class="btn btn-sm btn-link px-0" onclick="goLog('plan')">${L('จัดการแพลนทั้งหมด →', 'Manage all plans →', '管理全部计划 →')}</button></div></div></div>`;
 }
 
@@ -2116,6 +2084,35 @@ function renderPersonLog() {
     (lv.map(r => `<tr><td>${fmtD(r.leave_date)} <span class="text-muted small">${wdName(r.leave_date)}</span></td><td>${xE(lvName(r.leave_key))}</td><td>${n2(Number(r.hours))}</td></tr>`).join('') || `<tr><td colspan="3" class="text-center text-muted">${L('ไม่มีข้อมูลการลาในรอบนี้', 'No leave in this period', '该期间无请假')}</td></tr>`) + `</tbody></table></div>`;
 }
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closePersonLog(); });
+
+/* ===== admin OT tab: team overview - who logged OT each day / who is planned on which day ===== */
+let otTeamA = '', otTeamShow = 'all';
+function otTeamStep(d) { otTeamA = shiftAnchor(otTeamA || nowBkk(), 'cycle', d); renderOT(); }
+function otTeamSet(k) { otTeamShow = k; renderOT(); }
+const empOfRow = r => employeesData.find(x => x.startRow === r.employee_id) || employeesData.find(x => String(x.empId).trim().toLowerCase() === String(r.emp_code || '').trim().toLowerCase());
+function renderOT() {
+  const box = byId('otTeam'); if (!box || !isUnlocked()) return; if (!otTeamA) otTeamA = nowBkk();
+  const [s, e] = otRange('cycle', otTeamA), dm = x => x.slice(8, 10) + '/' + x.slice(5, 7), only = byId('otTeamOnly').checked;
+  byId('otTeamRange').textContent = dm(s) + ' – ' + dm(e) + ' ' + e.slice(0, 4);
+  byId('otTeamOnlyLbl').textContent = L('แสดงเฉพาะวันที่มีข้อมูล', 'Only days with data', '仅显示有数据的日期');
+  byId('otTeamShow').innerHTML = [['all', L('ทั้งหมด', 'All', '全部')], ['actual', L('ลง OT แล้ว', 'OT logged', '已录加班')], ['plan', L('แพลน OT', 'OT plan', '加班计划')]].map(([k, t]) => `<button class="btn ${otTeamShow === k ? 'btn-primary' : 'btn-outline-primary'}" onclick="otTeamSet('${k}')">${t}</button>`).join('');
+  const act = new Map(), pln = new Map();
+  otRows.forEach(r => { if (r.ot_date < s || r.ot_date > e) return; const em = empOfRow(r); if (!em) return; (act.get(r.ot_date) || act.set(r.ot_date, []).get(r.ot_date)).push({ em, r }); });
+  planRows.forEach(r => { if (r.plan_date < s || r.plan_date > e || !(Number(r.plan_hours) > 0)) return; const em = empOfRow(r); if (!em) return; (pln.get(r.plan_date) || pln.set(r.plan_date, []).get(r.plan_date)).push({ em, r }); });
+  const nA = [...act.values()].reduce((t, a) => t + a.length, 0), hA = [...act.values()].flat().reduce((t, x) => t + (Number(x.r.ot_hours) || 0), 0), nP = [...pln.values()].reduce((t, a) => t + a.length, 0);
+  const kp = (l, v, c) => `<div class="col-6 col-md-3"><div class="emp-card p-3"><div class="small text-muted">${l}</div><div class="fs-4 fw-bold ${c}">${v}</div></div></div>`;
+  byId('otKpi').innerHTML = kp(L('วันที่มีการลง OT', 'Days with OT', '有加班的天数'), act.size, 'text-primary') + kp(L('จำนวนคน-วัน OT', 'OT person-days', '加班人天'), nA, 'text-primary') + kp(L('ชั่วโมง OT รวม', 'Total OT hours', '加班总小时'), n2(hA), 'text-success') + kp(L('แพลน OT (คน-วัน)', 'Planned (person-days)', '计划人天'), nP, 'text-purple" style="color:#7c3aed');
+  const chip = (x, kind) => { const done = kind === 'plan' ? (act.get(x.r.plan_date) || []).some(a => a.em.startRow === x.em.startRow) : true, h = kind === 'plan' ? x.r.plan_hours : x.r.ot_hours, sh = shiftNorm(x.r.shift);
+    const bg = kind === 'plan' ? '#f3ecff' : '#e8efff', bd = kind === 'plan' ? '#d9c7fb' : '#c6d6fb';
+    return `<span class="d-inline-flex align-items-center gap-1 me-2 mb-1 px-2 py-1 rounded-pill" style="background:${bg};border:1px solid ${bd};cursor:pointer;font-size:13px" onclick="openPersonLog(${x.em.startRow}, '${s}', '${e}')" title="${xE(x.em.name)}">${avHtml(x.em, 22)}<span>${xE(x.em.name)}</span><span class="text-muted">${sh ? sh + ' · ' : ''}${n2(Number(h))}h</span>${kind === 'plan' ? (done ? '<i class="bi bi-check-circle-fill text-success" title="' + L('ลง OT แล้ว', 'OT logged', '已录入') + '"></i>' : '<i class="bi bi-hourglass-split text-warning" title="' + L('ยังไม่ลง OT', 'Not logged yet', '尚未录入') + '"></i>') : ''}</span>`; };
+  const days = []; for (let d = s; d <= e; d = addDays(d, 1)) days.push(d);
+  const rows = days.filter(d => !only || (otTeamShow !== 'plan' && act.has(d)) || (otTeamShow !== 'actual' && pln.has(d))).map(d => {
+    const A = (act.get(d) || []).sort((a, b) => a.em.name.localeCompare(b.em.name)), P = (pln.get(d) || []).sort((a, b) => a.em.name.localeCompare(b.em.name)), k = holKind(d), off = dow(d) === 0 || dow(d) === 6;
+    return `<tr><td style="white-space:nowrap;background:${HOL_BG[k] || (off ? '#f6f2ff' : '')}"><b>${fmtD(d)}</b> <span class="text-muted small">${wdName(d)}</span>${k ? `<div class="small" style="max-width:150px;white-space:normal">${xE(holName(d).split(' ').slice(0, 4).join(' '))}</div>` : ''}</td>` +
+      (otTeamShow !== 'plan' ? `<td>${A.length ? `<div class="small text-muted mb-1">${A.length} ${L('คน', 'ppl', '人')} · ${n2(A.reduce((t, x) => t + (Number(x.r.ot_hours) || 0), 0))}h</div>` + A.map(x => chip(x, 'act')).join('') : '<span class="text-muted">—</span>'}</td>` : '') +
+      (otTeamShow !== 'actual' ? `<td>${P.length ? `<div class="small text-muted mb-1">${P.length} ${L('คน', 'ppl', '人')}</div>` + P.map(x => chip(x, 'plan')).join('') : '<span class="text-muted">—</span>'}</td>` : '') + '</tr>'; });
+  box.innerHTML = `<div class="table-responsive"><table class="table align-middle mb-0"><thead class="table-light"><tr><th style="width:160px">${L('วันที่', 'Date', '日期')}</th>${otTeamShow !== 'plan' ? `<th>${L('ลง OT แล้ว (ใครลงบ้าง)', 'OT logged (who)', '已录入加班(谁)')}</th>` : ''}${otTeamShow !== 'actual' ? `<th>${L('แพลน OT (ใครลงวันไหน)', 'OT plan (who / which day)', '加班计划(谁/哪天)')} <span class="small fw-normal text-muted">✓ = ${L('ลง OT แล้ว', 'logged', '已录入')}</span></th>` : ''}</tr></thead><tbody>${rows.join('') || `<tr><td colspan="3" class="text-center text-muted py-4">${L('ไม่มีข้อมูลในรอบนี้', 'No data in this period', '该期间无数据')}</td></tr>`}</tbody></table></div>`;
+}
 
 let planEditId = null;
 function setLogKind(k) { logKind = k; planEditId = null; renderLogView(); }
@@ -2194,7 +2191,7 @@ function buildSections(o = {}) {
     out.push({ key: 'leave', name: 'Leave Summary', title: L('สรุปโควต้าและวันลา (มุมมองการ์ด/ตาราง)', 'Leave summary (cards / table view)'), head: [t.pdfThEmpId, t.pdfThName, t.pdfThType, t.pdfThQuota, t.pdfThUsed, t.pdfThRemaining, t.pdfThNote], body }); }
   // 2 overview
   { const list = employeesData.map(e => ({ e, s: calcFairStats(e) })).sort((a, b) => b.s.avgPct - a.s.avgPct), avg = list.length ? Math.round(list.reduce((a, x) => a + x.s.avgPct, 0) / list.length) : 0;
-    out.push({ key: 'overview', name: 'Overview', title: L('ภาพรวมเปรียบเทียบ (ดัชนีการลา %)', 'Team overview (leave index %)'), head: [t.pdfThEmpId, t.pdfThName, t.typeAnnual + ' %', t.typePersonal + ' %', t.typeSick + ' %', t.scoreLabel + ' %', t.pdfThUsed, t.pdfThQuota],
+    out.push({ key: 'overview', name: 'Overview', title: L('ภาพรวม (ดัชนีการลา %)', 'Team overview (leave index %)'), head: [t.pdfThEmpId, t.pdfThName, t.typeAnnual + ' %', t.typePersonal + ' %', t.typeSick + ' %', t.scoreLabel + ' %', t.pdfThUsed, t.pdfThQuota],
       body: list.map(x => [x.e.empId, x.e.name, Math.round(x.s.pctMap.annual), Math.round(x.s.pctMap.personal), Math.round(x.s.pctMap.sick), x.s.avgPct, n2(x.s.totalUsed), n2(x.s.totalQuota)]), foot: [L('เฉลี่ยทีม', 'Team avg'), '', '', '', '', avg, '', '']}); }
   // 3 person summary (range)
   { const lv = new Map(), otm = new Map();
