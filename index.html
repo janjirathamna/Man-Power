@@ -1409,7 +1409,7 @@ const qInputs = (pfx, withUsed) => `<table class="table table-sm table-bordered 
 const DM_FORM = {
   addEmp: () => `<div class="row g-2 mb-2"><div class="col-5"><label class="form-label small fw-bold mb-0">${tx('lblEmpId')}</label><input id="aeCode" class="form-control form-control-sm" placeholder="C26999"></div><div class="col-7"><label class="form-label small fw-bold mb-0">${tx('lblName')}</label><input id="aeName" class="form-control form-control-sm"></div></div>${qInputs('ae', true)}${wsSelect('aeSched')}${lmSelect('aeLeave')}<label class="form-label small fw-bold mb-0">${tx('lblNote')}</label><input id="aeNote" class="form-control form-control-sm"><button class="btn btn-success btn-sm mt-3" onclick="saveAddEmpForm()">${tx('btnAddConfirm')}</button>`,
   delEmp: () => `<label class="form-label small fw-bold mb-0">${L('เลือกพนักงานที่จะลบ (เลือกได้หลายคน)', 'Select employees to delete (multi-select)')}</label><select id="deSel" multiple size="10" class="form-select form-select-sm">${empOpts()}</select><div class="small text-muted mt-1">${L('ลบพนักงาน โควต้า ประวัติการลา และประวัติโควต้าของคนนั้น (OT log จะเก็บไว้โดยไม่ผูกพนักงาน)', 'Removes the employee, quotas, leave log and quota log (OT log is kept, unlinked)')}</div><button class="btn btn-danger btn-sm mt-2" onclick="saveDelEmpForm()"><i class="bi bi-trash"></i> ${tx('btnDelete')}</button>`,
-  editEmp: () => `<label class="form-label small fw-bold mb-0">${L('พนักงาน', 'Employee')}</label><select id="eeSel" class="form-select form-select-sm mb-2" onchange="eeFill()">${empOpts()}</select><div class="d-flex align-items-center gap-3 mb-3"><div id="eeAv"></div><label class="btn btn-sm btn-outline-primary mb-0"><i class="bi bi-camera"></i> ${L('เพิ่ม/เปลี่ยนรูป', 'Add / change photo', '添加/更换照片')}<input type="file" accept="image/*" hidden onchange="avUpload(+byId('eeSel').value, this)"></label></div><div class="row g-2"><div class="col-5"><label class="form-label small fw-bold mb-0">${tx('lblEmpId')}</label><input id="eeCode" class="form-control form-control-sm"></div><div class="col-7"><label class="form-label small fw-bold mb-0">${tx('lblName')}</label><input id="eeName" class="form-control form-control-sm"></div><div class="col-12"><label class="form-label small fw-bold mb-0">${tx('lblNote')}</label><input id="eeNote" class="form-control form-control-sm"></div><div class="col-12">${wsSelect('eeSched')}</div><div class="col-12">${lmSelect('eeLeave')}</div></div><button class="btn btn-primary btn-sm mt-3" onclick="saveEditEmpForm()">${tx('btnSave')}</button> <button class="btn btn-outline-secondary btn-sm mt-3" onclick="eeFull()">${L('เปิดหน้าแก้ไขเต็ม (รวมโควต้า/วันลาจริง)', 'Open full editor (quota / used)')}</button> <button class="btn btn-outline-danger btn-sm mt-3" onclick="eeDelete()"><i class="bi bi-trash"></i> ${L('ลบพนักงานคนนี้', 'Delete this employee', '删除该员工')}</button>
+  editEmp: () => `<label class="form-label small fw-bold mb-0">${L('พนักงาน', 'Employee', '员工')}</label><div class="d-flex gap-1 mb-1"><button type="button" class="btn btn-outline-primary btn-sm" onclick="eeGo(-1)" title="${L('คนก่อนหน้า', 'Previous', '上一位')}">◀</button><select id="eeSel" class="form-select form-select-sm" onchange="eeFill()">${empOpts()}</select><button type="button" class="btn btn-primary btn-sm text-nowrap" onclick="eeGo(1)">${L('คนถัดไป', 'Next', '下一位')} ▶</button></div><div id="eeNav" class="small text-muted mb-2"></div>${eeMultiHtml()}<div class="d-flex align-items-center gap-3 mb-3"><div id="eeAv"></div><label class="btn btn-sm btn-outline-primary mb-0"><i class="bi bi-camera"></i> ${L('เพิ่ม/เปลี่ยนรูป', 'Add / change photo', '添加/更换照片')}<input type="file" accept="image/*" hidden onchange="avUpload(+byId('eeSel').value, this)"></label></div><div class="row g-2"><div class="col-5"><label class="form-label small fw-bold mb-0">${tx('lblEmpId')}</label><input id="eeCode" class="form-control form-control-sm"></div><div class="col-7"><label class="form-label small fw-bold mb-0">${tx('lblName')}</label><input id="eeName" class="form-control form-control-sm"></div><div class="col-12"><label class="form-label small fw-bold mb-0">${tx('lblNote')}</label><input id="eeNote" class="form-control form-control-sm"></div><div class="col-12">${wsSelect('eeSched')}</div><div class="col-12">${lmSelect('eeLeave')}</div></div><button class="btn btn-primary btn-sm mt-3" onclick="saveEditEmpForm()">${tx('btnSave')}</button> <button class="btn btn-success btn-sm mt-3" onclick="saveEditEmpForm(true)">${L('บันทึก + คนถัดไป', 'Save + next', '保存并下一位')} ▶</button> <button class="btn btn-outline-secondary btn-sm mt-3" onclick="eeFull()">${L('เปิดหน้าแก้ไขเต็ม (รวมโควต้า/วันลาจริง)', 'Open full editor (quota / used)')}</button> <button class="btn btn-outline-danger btn-sm mt-3" onclick="eeDelete()"><i class="bi bi-trash"></i> ${L('ลบพนักงานคนนี้', 'Delete this employee', '删除该员工')}</button>
     <details class="mt-4 border rounded p-2"><summary class="fw-bold" style="cursor:pointer"><i class="bi bi-person-plus"></i> ${L('เพิ่มพนักงานใหม่', 'Add a new employee', '添加新员工')}</summary><div class="mt-2">${DM_FORM.addEmp()}</div></details>`,
   quota: () => `<div id="qTable" class="table-responsive"></div><label class="form-label small mb-0">${tx('quotaNote')}</label><input id="qNote" class="form-control form-control-sm"><button class="btn btn-warning btn-sm fw-bold mt-2" onclick="saveQuotas()">${tx('btnSaveQuota')}</button><hr><h6 class="fw-bold">${tx('quotaHist')}</h6><div id="qHist" class="table-responsive small"></div>`,
   leave: () => `<div class="row g-2"><div class="col-md-6"><label class="form-label small mb-0">${L('ใคร (พนักงาน)', 'Who (employee)', '谁（员工）')}</label><select id="lvEmp" class="form-select form-select-sm"></select></div><div class="col-md-6"><label class="form-label small mb-0">${L('วันไหน (วันที่ลา)', 'Date', '请假日期')}</label><input type="date" id="lvDate" class="form-control form-control-sm"></div><div class="col-md-6"><label class="form-label small mb-0">${L('ลาอะไร (ประเภทวันลา)', 'Leave type', '请假类别')}</label><select id="lvType" class="form-select form-select-sm"></select></div><div class="col-md-6"><label class="form-label small mb-0">${L('กี่ชั่วโมง (8 ชม. = 1 วัน)', 'Hours (8 h = 1 day)', '小时数（8小时=1天）')}</label><input type="number" id="lvHours" min="0" step="0.5" class="form-control form-control-sm"></div><div class="col-12"><label class="form-label small mb-0">${L('เหตุผล / หมายเหตุ', 'Reason / note', '原因 / 备注')}</label><textarea id="lvReason" rows="2" class="form-control form-control-sm"></textarea></div></div><button class="btn btn-success btn-sm mt-3" onclick="saveLeaveLog()">${tx('btnSaveLeave')}</button><hr><h6 class="fw-bold">${tx('leaveHist')}</h6><div id="lvHist" class="table-responsive small"></div>`,
@@ -1429,7 +1429,57 @@ const DM_INIT = {
   leave: () => { byId('lvEmp').innerHTML = empOpts(); byId('lvType').innerHTML = Object.keys(LEAVE_LABELS).map(k => `<option value="${k}">${lvName(k)}</option>`).join(''); byId('lvDate').value = nowBkk(); renderLeaveHist(); },
   ot: () => { otfDatePick(nowBkk()); }
 };
-function eeFill() { const e = employeesData.find(x => String(x.startRow) === byId('eeSel').value); if (!e) return; byId('eeAv').innerHTML = avHtml(e, 64); byId('eeCode').value = e.empId; byId('eeName').value = e.name; byId('eeNote').value = e.note || ''; byId('eeSched').value = e.schedule; byId('eeLeave').value = e.leaveMode || 'hourly'; }
+function eeFill() { const e = employeesData.find(x => String(x.startRow) === byId('eeSel').value); if (!e) return; byId('eeAv').innerHTML = avHtml(e, 64); byId('eeCode').value = e.empId; byId('eeName').value = e.name; byId('eeNote').value = e.note || ''; byId('eeSched').value = e.schedule; byId('eeLeave').value = e.leaveMode || 'hourly'; eeNav(); }
+/* ---------- manage employees: several people at once + previous / next ---------- */
+let eeChecked = new Set(), eeOpen = false;                // ticked employees (startRow ids); is the "several people" box open
+const eeIds = () => employeesData.map(e => e.startRow);
+const eeOrder = () => { const all = eeIds(), pick = all.filter(i => eeChecked.has(i)); return pick.length ? pick : all; };   // next / previous walks the ticked people, or everybody when none is ticked
+function eeGo(dir) {
+  const sel = byId('eeSel'), ord = eeOrder(); if (!sel || !ord.length) return;
+  let k = ord.indexOf(+sel.value); k = k < 0 ? (dir > 0 ? 0 : ord.length - 1) : (k + dir + ord.length) % ord.length;
+  sel.value = String(ord[k]); eeFill();
+}
+function eeNav() {
+  const sel = byId('eeSel'), nav = byId('eeNav'); if (!sel || !nav) return;
+  const ord = eeOrder(), k = ord.indexOf(+sel.value), n = employeesData.filter(e => eeChecked.has(e.startRow)).length;
+  nav.textContent = `${k < 0 ? '–' : k + 1} / ${ord.length}` + (n ? ' · ' + L('เฉพาะคนที่เลือก', 'selected people only', '仅所选人员') : '');
+  const c = byId('eeTickN'); if (c) c.textContent = n;
+}
+function eeTick(id, on) { on ? eeChecked.add(id) : eeChecked.delete(id); eeNav(); }
+function eeTickAll(on) {
+  if (!on) eeChecked.clear();
+  document.querySelectorAll('#eeBoxes .ee-row').forEach(r => { if (on && r.style.display === 'none') return; if (on) eeChecked.add(+r.dataset.id); r.querySelector('input').checked = on; });
+  eeNav();
+}
+function eeFilter() { const q = byId('eeFind').value.trim().toLowerCase(); document.querySelectorAll('#eeBoxes .ee-row').forEach(r => (r.style.display = !q || r.dataset.k.includes(q) ? '' : 'none')); }
+function eeJump(id) { byId('eeSel').value = String(id); eeFill(); byId('eeSel').scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+function eeMultiHtml() {
+  eeChecked = new Set([...eeChecked].filter(i => employeesData.some(e => e.startRow === i)));
+  const no = L('— ไม่เปลี่ยน —', '— No change —', '— 不更改 —');
+  return `<details id="eeMulti" class="border rounded p-2 mb-3"${eeOpen ? ' open' : ''} ontoggle="eeOpen=this.open"><summary class="fw-bold small" style="cursor:pointer"><i class="bi bi-people"></i> ${L('เลือกหลายคน', 'Select several people', '选择多人')} (<span id="eeTickN">${eeChecked.size}</span>)</summary>
+    <div class="d-flex gap-1 my-2"><input id="eeFind" class="form-control form-control-sm" placeholder="${L('ค้นหารหัส / ชื่อ', 'Search ID / name', '搜索工号 / 姓名')}" oninput="eeFilter()"><button type="button" class="btn btn-outline-secondary btn-sm text-nowrap" onclick="eeTickAll(true)">${L('เลือกที่แสดง', 'Select shown', '全选显示项')}</button><button type="button" class="btn btn-outline-secondary btn-sm text-nowrap" onclick="eeTickAll(false)">${L('ล้างทั้งหมด', 'Clear all', '全部清除')}</button></div>
+    <div id="eeBoxes" class="border rounded p-1" style="max-height:200px;overflow:auto">${employeesData.map(e => `<div class="d-flex align-items-center gap-2 px-1 ee-row" data-id="${e.startRow}" data-k="${xE((e.empId + ' ' + e.name).toLowerCase())}"><input type="checkbox" class="form-check-input mt-0"${eeChecked.has(e.startRow) ? ' checked' : ''} onchange="eeTick(${e.startRow},this.checked)"><span class="small flex-grow-1">${xE(e.empId)} ${xE(e.name)}</span><button type="button" class="btn btn-link btn-sm p-0" title="${L('แก้ไขคนนี้', 'Edit this person', '编辑此人')}" onclick="eeJump(${e.startRow})"><i class="bi bi-pencil"></i></button></div>`).join('')}</div>
+    <div class="fw-bold small mt-3 mb-1">${L('แก้พร้อมกันทุกคนที่เลือก', 'Edit everyone selected', '批量修改所选人员')}</div>
+    <div class="row g-2"><div class="col-md-6"><label class="form-label small mb-0">${L('รูปแบบวันหยุด', 'Day-off pattern', '休息日模式')}</label><select id="ebSched" class="form-select form-select-sm"><option value="">${no}</option>${WS.map(k => `<option value="${k}">${wsLbl(k)}</option>`).join('')}</select></div>
+    <div class="col-md-6"><label class="form-label small mb-0">${L('สิทธิ์การลา', 'Leave entitlement', '请假权限')}</label><select id="ebLeave" class="form-select form-select-sm"><option value="">${no}</option><option value="hourly">${L('ลารายชั่วโมงได้', 'Hourly leave allowed', '可按小时请假')}</option><option value="half">${L('ลาครึ่งวันหรือทั้งวันเท่านั้น', 'Half-day or full-day only', '只能请半天或全天')}</option></select></div>
+    <div class="col-12"><label class="form-label small mb-0">${L('โน้ต (ติ๊กเพื่อเขียนทับโน้ตของทุกคนที่เลือก)', 'Note (tick to overwrite the note of everyone selected)', '备注（勾选后覆盖所选人员的备注）')}</label><div class="input-group input-group-sm"><div class="input-group-text"><input type="checkbox" id="ebNoteOn" class="form-check-input mt-0"></div><input id="ebNote" class="form-control" oninput="byId('ebNoteOn').checked=true"></div></div></div>
+    <button type="button" class="btn btn-primary btn-sm mt-2" onclick="eeBulkApply()">${L('นำไปใช้กับคนที่เลือก', 'Apply to selected', '应用到所选人员')}</button> <button type="button" class="btn btn-outline-danger btn-sm mt-2" onclick="eeBulkDelete()"><i class="bi bi-trash"></i> ${L('ลบคนที่เลือก', 'Delete selected', '删除所选人员')}</button></details>`;
+}
+async function eeBulkApply() {
+  const ids = eeIds().filter(i => eeChecked.has(i)); if (!ids.length) return alert(L('ยังไม่ได้เลือกพนักงาน', 'No employee selected', '尚未选择员工'));
+  const patch = {}, sc = byId('ebSched').value, lm = byId('ebLeave').value;
+  if (sc) patch.work_schedule = sc; if (lm) patch.leave_mode = lm; if (byId('ebNoteOn').checked) patch.note = byId('ebNote').value.trim();
+  if (!Object.keys(patch).length) return alert(L('ยังไม่ได้เลือกสิ่งที่จะเปลี่ยน', 'Nothing to change', '没有要修改的项目'));
+  if (!confirm(L(`แก้ข้อมูลพนักงาน ${ids.length} คน?`, `Update ${ids.length} employee(s)?`, `修改 ${ids.length} 位员工？`))) return;
+  const ok = await formRun(async () => { await supabaseClient.from('mp_employees').update(patch).in('id', ids).then(chk); return L(`บันทึกแล้ว ${ids.length} คน`, `Saved ${ids.length}`, `已保存 ${ids.length} 位`); });
+  if (ok) { const cur = byId('eeSel').value; dmRender(); byId('eeSel').value = cur; eeFill(); }
+}
+async function eeBulkDelete() {
+  const ids = eeIds().filter(i => eeChecked.has(i)); if (!ids.length) return alert(L('ยังไม่ได้เลือกพนักงาน', 'No employee selected', '尚未选择员工'));
+  if (!confirm(L(`ยืนยันลบพนักงาน ${ids.length} คน? โควต้าและประวัติการลาของคนเหล่านี้จะถูกลบด้วย`, `Delete ${ids.length} employee(s)? Their quotas and leave logs are removed too.`, `删除 ${ids.length} 位员工？其额度和请假记录也会被删除。`))) return;
+  const ok = await formRun(async () => { await deleteEmployees(ids); return L(`ลบแล้ว ${ids.length} คน`, `Deleted ${ids.length}`, `已删除 ${ids.length} 位`); });
+  if (ok) { eeChecked.clear(); dmRender(); }
+}
 function eeFull() { const i = employeesData.findIndex(x => String(x.startRow) === byId('eeSel').value); if (i < 0) return; closeDataPanel(); setTimeout(() => openEditModal(i), 350); }
 
 /* ---------- employee operations ---------- */
@@ -1474,13 +1524,13 @@ async function eeDelete() {
   if (!confirm(L(`ยืนยันลบ ${e.name} (${e.empId})? โควต้า ประวัติการลา และประวัติโควต้าของคนนี้จะถูกลบด้วย`, `Delete ${e.name} (${e.empId})? Quotas, leave log and quota log are removed too.`))) return;
   const ok = await formRun(async () => { await deleteEmployees([id]); return L('ลบแล้ว', 'Deleted'); }); if (ok) dmRender();
 }
-async function saveEditEmpForm() {
+async function saveEditEmpForm(next) {
   const id = +byId('eeSel').value, code = byId('eeCode').value.trim(), name = byId('eeName').value.trim();
   if (!code || !name) return alert(L('กรุณากรอกรหัสและชื่อพนักงาน', 'ID and name are required'));
   if (employeesData.some(e => e.startRow !== id && String(e.empId).trim().toLowerCase() === code.toLowerCase())) return alert(L('รหัสพนักงานซ้ำ', 'Duplicate employee ID'));
   const sel = byId('eeSel').value;
   const ok = await formRun(async () => { await patchEmployee(id, { emp_id: code, name, note: byId('eeNote').value.trim(), work_schedule: byId('eeSched').value, ...(byId('eeLeave').value !== ((empOf(id) || {}).leaveMode || 'hourly') ? { leave_mode: byId('eeLeave').value } : {}) }); return L('บันทึกแล้ว', 'Saved'); });
-  if (ok) { dmRender(); byId('eeSel').value = sel; eeFill(); }
+  if (ok) { dmRender(); byId('eeSel').value = sel; eeFill(); if (next === true) eeGo(1); }
 }
 
 /* ---------- leave form + log ---------- */
