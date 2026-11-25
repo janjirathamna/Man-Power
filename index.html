@@ -642,7 +642,7 @@ async function loadLeaveData(withLeaves = true) {
   try {
     await reloadAll();
     applyMode();
-    switchTab(isUnlocked() ? 'cards' : 'ot');
+    switchTab(isUnlocked() ? 'dash' : 'ot');
   } catch (err) {
     alert('Error fetching data: ' + err.message);
   } finally {
@@ -1556,7 +1556,7 @@ async function saveLeaveLog() {
 function renderLeaveHist() {
   const box = byId('lvHist'); if (!box) return;
   const data = [...leaveLogs].sort((a, b) => b.id - a.id).slice(0, 30);
-  box.innerHTML = `<table class="table table-sm"><thead class="table-light"><tr><th>${L('วันที่', 'Date')}</th><th>${L('พนักงาน', 'Employee')}</th><th>${L('ประเภท', 'Type')}</th><th>h</th><th>${L('เหตุผล', 'Reason')}</th><th></th></tr></thead><tbody>` +
+  box.innerHTML = `<table class="table table-sm"><thead class="table-light"><tr><th>${L('วันที่', 'Date')}</th><th>${L('พนักงาน', 'Employee')}</th><th>${L('ประเภท', 'Type')}</th><th>h</th><th>${L('หมายเหตุ', 'Remark', '备注')}</th><th></th></tr></thead><tbody>` +
     data.map(r => { const e = employeesData.find(x => x.startRow === r.employee_id);
       return `<tr><td>${fmtD(r.leave_date)}</td><td>${xE(e ? e.name : r.employee_id)}</td><td>${xE(lvLbl(r))}</td><td>${r.hours}</td><td>${xE(r.reason || '')}</td><td><button class="btn btn-sm btn-outline-danger py-0" onclick="delLeaveLog(${r.id})"><i class="bi bi-trash"></i></button></td></tr>`; }).join('') + '</tbody></table>';
 }
@@ -2227,7 +2227,7 @@ function renderLogView() {
   let head, rows, total, selKey = '', ids = [];
   if (logKind === 'leave') {
     const d = leaveLogs.filter(r => inRg(r.leave_date)).sort((a, b) => b.leave_date.localeCompare(a.leave_date) || b.id - a.id); total = d.length;
-    head = [L('วันที่', 'Date'), L('รหัส', 'ID'), L('ชื่อ', 'Name'), L('ประเภท', 'Type'), L('ชั่วโมง', 'Hours'), L('เหตุผล', 'Reason'), L('ที่มา', 'Source')]; selKey = 'leavelog'; ids = d.slice(0, CAP).map(r => r.id);
+    head = [L('วันที่', 'Date'), L('รหัส', 'ID'), L('ชื่อ', 'Name'), L('ประเภท', 'Type'), L('ชั่วโมง', 'Hours'), L('หมายเหตุ', 'Remark', '备注'), L('ที่มา', 'Source')]; selKey = 'leavelog'; ids = d.slice(0, CAP).map(r => r.id);
     rows = d.slice(0, CAP).map(r => { const e = em.get(r.employee_id); return [fmtD(r.leave_date), xE(e ? e.empId : ''), xE(e ? e.name : r.employee_id), xE(lvLbl(r)), r.hours, xE(r.reason || ''), xE(r.source || '')]; });
   } else if (logKind === 'ot') {
     const d = otRows.filter(r => inRg(r.ot_date)).sort((a, b) => b.ot_date.localeCompare(a.ot_date) || b.id - a.id); total = d.length;
@@ -2407,7 +2407,6 @@ function buildPub() {
     <div class="col-md-4" id="lrEndW"><label class="form-label small mb-0">${L('ถึงวันที่ (ถ้าลาหลายวัน)', 'Until (multi-day)', '至（多天）')}</label><input type="date" id="lrDate2" class="form-control form-control-sm" onchange="lrCalc()" oninput="lrCalc()"></div>
     <div class="col-md-4 d-none" id="lrFromW"><label class="form-label small mb-0">${L('ตั้งแต่เวลา', 'From', '开始时间')}</label>${timeSel('lrFrom')}</div>
     <div class="col-md-4 d-none" id="lrToW"><label class="form-label small mb-0">${L('ถึงเวลา', 'To', '结束时间')}</label>${timeSel('lrTo')}</div>
-    <div class="col-md-4"><label class="form-label small mb-0">${L('รวม (ชม.)', 'Total (h)', '合计(小时)')}</label><input id="lrHours" class="form-control form-control-sm" readonly></div>
     <div class="col-12"><label class="form-label small mb-0">${L('เหตุผลในการลา', 'Reason', '请假原因')}</label><textarea id="lrReason" rows="2" class="form-control form-control-sm"></textarea></div>
     <div class="col-12"><label class="form-label small mb-0">${L('แนบหลักฐานการลา (รูป/PDF สูงสุด 3 ไฟล์ ไฟล์ละไม่เกิน 5 MB)', 'Evidence (image/PDF, up to 3 files, 5 MB each)', '附上凭证（图片/PDF，最多3个，每个不超过5MB）')}</label><input type="file" id="lrFiles" class="form-control form-control-sm" accept="image/*,.pdf" multiple></div></div>
     <button class="btn btn-success btn-sm mt-3" onclick="lrSubmit()"><i class="bi bi-send"></i> ${L('ส่งคำร้องขอลา', 'Submit request', '提交申请')}</button></div>`;
@@ -2517,9 +2516,9 @@ async function calDel(id) {
 let lrM = 'all';
 const LR_PART = { am: ['08:00', '12:00', 3.75], pm: ['13:00', '17:30', 4.25] };   // half-day: 8 h/day less 2 x 15 min breaks
 function lrOpts() {
-  const e = empByCode(byId('lrCode').value), all = ['all', L('ลาทั้งวัน (8 ชม.)', 'All day (8 h)', '全天 (8小时)')];
+  const e = empByCode(byId('lrCode').value), all = ['all', L('ลาทั้งวัน', 'All day', '全天')];
   return e && e.leaveMode === 'half'
-    ? [all, ['am', L('ครึ่งเช้า 08:00–12:00 (3.75 ชม.)', 'Morning 08:00–12:00 (3.75 h)', '上午 08:00–12:00 (3.75小时)')], ['pm', L('ครึ่งบ่าย 13:00–17:30 (4.25 ชม.)', 'Afternoon 13:00–17:30 (4.25 h)', '下午 13:00–17:30 (4.25小时)')]]
+    ? [all, ['am', L('ครึ่งเช้า 08:00–12:00', 'Morning 08:00–12:00', '上午 08:00–12:00')], ['pm', L('ครึ่งบ่าย 13:00–17:30', 'Afternoon 13:00–17:30', '下午 13:00–17:30')]]
     : [all, ['time', L('เลือกช่วงเวลา', 'By time', '按时间段')]];
 }
 function lrModeRender() {
@@ -2538,7 +2537,7 @@ function lrCalc() {
     if (d1 && d2) h = (Math.round((new Date(d2) - new Date(d1)) / 864e5) + 1) * 8;
   } else if (LR_PART[lrM]) h = LR_PART[lrM][2];
   else { const a = timeVal('lrFrom'), b = timeVal('lrTo'), m = x => +x.slice(0, 2) * 60 + +x.slice(3, 5); if (a && b && m(b) > m(a)) h = Math.round((m(b) - m(a)) / 60 * 100) / 100; }
-  byId('lrHours').readOnly = true; byId('lrHours').value = h ? String(h) : ''; return h;
+  return h;          // hours are still calculated for the quota, but no longer shown on the form
 }
 async function lrSubmit() {
   const e = empByCode(byId('lrCode').value), all = lrAll(), d1 = byId('lrDate').value, d2 = all ? (byId('lrDate2').value || d1) : d1, from = LR_PART[lrM] ? LR_PART[lrM][0] : timeVal('lrFrom'), to = LR_PART[lrM] ? LR_PART[lrM][1] : timeVal('lrTo'), reason = byId('lrReason').value.trim(), h = lrCalc(), files = [...byId('lrFiles').files];
@@ -2557,8 +2556,8 @@ async function lrSubmit() {
     }
     const { error } = await supabaseClient.from('mp_leave_requests').insert({ employee_id: e.startRow, emp_code: e.empId, emp_name: e.name, leave_key: byId('lrType').value, leave_date: d1, leave_end: d2, all_day: all, time_from: all ? null : from, time_to: all ? null : to, hours: h, reason, evidence, status: 'pending' });
     if (error) throw error;
-    byId('lrOk').innerHTML = `<div class="alert alert-success py-2 small"><b>${L('ส่งคำร้องขอลาแล้ว — รอแอดมินอนุมัติ', 'Request sent — waiting for admin approval', '申请已提交 — 等待管理员审批')}</b><br>${xE(e.empId)} ${xE(e.name)} · ${xE(lvName(byId('lrType').value))} · ${fmtD(d1)}${d2 !== d1 ? ' – ' + fmtD(d2) : ''} · ${all ? L('ทั้งวัน', 'All day', '全天') : from + '–' + to} · ${h} h</div>`;
-    ['lrCode', 'lrReason', 'lrFiles', 'lrHours', 'lrFromH', 'lrFromM', 'lrToH', 'lrToM', 'lrDate2'].forEach(id => (byId(id).value = '')); byId('lrName').textContent = '';
+    byId('lrOk').innerHTML = `<div class="alert alert-success py-2 small"><b>${L('ส่งคำร้องขอลาแล้ว — รอแอดมินอนุมัติ', 'Request sent — waiting for admin approval', '申请已提交 — 等待管理员审批')}</b><br>${xE(e.empId)} ${xE(e.name)} · ${xE(lvName(byId('lrType').value))} · ${fmtD(d1)}${d2 !== d1 ? ' – ' + fmtD(d2) : ''} · ${all ? L('ทั้งวัน', 'All day', '全天') : from + '–' + to}</div>`;
+    ['lrCode', 'lrReason', 'lrFiles', 'lrFromH', 'lrFromM', 'lrToH', 'lrToM', 'lrDate2'].forEach(id => (byId(id).value = '')); byId('lrName').textContent = '';
   } catch (err) { alert('Error: ' + (err.message || err) + '\n' + L('(ถ้าเพิ่งตั้งระบบ ต้องรัน manpower-leave-requests.sql ใน Supabase ก่อน)', '(first run manpower-leave-requests.sql in Supabase)', '（请先在 Supabase 运行 manpower-leave-requests.sql）')); }
   showLoader(false);
 }
@@ -2566,6 +2565,7 @@ async function lrSubmit() {
 /* ----- admin: leave requests (read through PIN-checked RPCs) ----- */
 async function loadReqs() { try { reqRows = (await supabaseClient.rpc('mp_req_list', { p_pin: ACCESS_PIN }).then(chk)) || []; reqErr = ''; } catch (e) { reqRows = []; reqErr = e.message || String(e); } }
 const reqLbl = () => L('คำร้องขอลา', 'Leave requests', '请假申请') + (reqRows.filter(r => r.status === 'pending').length ? ` (${reqRows.filter(r => r.status === 'pending').length})` : '');
+const lvRemark = r => [r.all_day ? ((r.leave_end && r.leave_end !== r.leave_date) ? `${fmtDM(r.leave_date)}–${fmtDM(r.leave_end)}` : '') : `${String(r.time_from || '').slice(0, 5)}–${String(r.time_to || '').slice(0, 5)}`, r.reason].filter(Boolean).join(' · ');   // 'HH:MM–HH:MM · reason'
 async function reqDecide(id, st) {
   const r = reqRows.find(x => x.id === id); if (!r) return;
   if (st === 'approved') {
@@ -2576,7 +2576,7 @@ async function reqDecide(id, st) {
     if (!confirm(L(`อนุมัติและบันทึกการลา ${days.length} วัน (${days.reduce((a, x) => a + x[1], 0)} ชม.) ให้ ${emp.name}?`, `Approve and record ${days.length} day(s) (${days.reduce((a, x) => a + x[1], 0)} h) for ${emp.name}?`, `批准并为 ${emp.name} 记录 ${days.length} 天 (${days.reduce((a, x) => a + x[1], 0)} 小时)？`))) return;
     showLoader(true, L('กำลังบันทึก...', 'Saving...')); const done = [];
     try {
-      for (const [d, h] of days) { const log = await supabaseClient.from('mp_leave_logs').insert({ employee_id: emp.startRow, leave_key: r.leave_key, label: lf.label || LEAVE_LABELS[r.leave_key], leave_date: d, hours: h, reason: r.reason || null, source: 'request' }).select().single().then(chk); done.push([log.id, h]); await addUsed(lf.row, h / HOURS_PER_DAY); }
+      for (const [d, h] of days) { const log = await supabaseClient.from('mp_leave_logs').insert({ employee_id: emp.startRow, leave_key: r.leave_key, label: lf.label || LEAVE_LABELS[r.leave_key], leave_date: d, hours: h, reason: lvRemark(r) || null, source: 'request' }).select().single().then(chk); done.push([log.id, h]); await addUsed(lf.row, h / HOURS_PER_DAY); }
     } catch (err) { for (const [lid, h] of done) { await supabaseClient.from('mp_leave_logs').delete().eq('id', lid); await addUsed(lf.row, -h / HOURS_PER_DAY).catch(() => {}); } showLoader(false); return alert('Error: ' + (err.message || err)); }
   } else { showLoader(true, '...'); }
   try { await supabaseClient.rpc('mp_req_set', { p_pin: ACCESS_PIN, p_id: id, p_status: st, p_note: null }).then(chk); await reloadAll(); } catch (err) { alert('Error: ' + (err.message || err)); }
