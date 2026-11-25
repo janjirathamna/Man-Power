@@ -1273,12 +1273,12 @@ async function reloadAll() { employeesData = await loadLeaveData(isUnlocked()); 
 
 /* ---------- Add Data modal ---------- */
 const DM_MODES = {
-  addEmp: ['เพิ่มพนักงาน', 'Add employee'], delEmp: ['ลบพนักงาน', 'Delete employee'], editEmp: ['แก้ไขข้อมูลพนักงาน (รวมรหัส)', 'Edit employee (incl. ID)'],
+  addEmp: ['เพิ่มพนักงาน', 'Add employee'], delEmp: ['ลบพนักงาน', 'Delete employee'], editEmp: ['จัดการพนักงาน (เพิ่ม / แก้ไข / ลบ / รูป)', 'Manage employees (add / edit / delete / photo)'],
   quota: ['แก้ไขโควต้าวันลา', 'Edit leave quota'], leave: ['บันทึกการลา', 'Record leave'], ot: ['ลง OT ประจำวัน', 'Daily OT'], plan: ['ลงแพลน OT วันหยุด', 'Day-off OT plan']
 };
 const fieldLbl = l => { const [m, zh] = l.split('  '), [th, en] = m.split(' / '); return currentLang === 'th' ? th : currentLang === 'zh' ? (zh || en || th) : (en || th); };
 const DM_PUBLIC = ['ot', 'plan'];
-const dmModes = () => Object.entries(DM_MODES).filter(([k]) => isUnlocked() ? k !== 'ot' : DM_PUBLIC.includes(k));
+const dmModes = () => Object.entries(DM_MODES).filter(([k]) => isUnlocked() ? ['editEmp', 'quota'].includes(k) : DM_PUBLIC.includes(k));
 const ID_AL = ['emp_id', 'empid', 'รหัสพนักงาน', 'รหัส', '工号', 'code'];
 const NAME_AL = ['name', 'ชื่อพนักงาน', 'ชื่อ', '姓名', 'employee name'];
 const OT_FIELDS = [
@@ -1313,8 +1313,8 @@ const DM_FIELDS = {
     ['hours', 'ชั่วโมงที่ลา / Hours', ['hours', 'hour', 'ชั่วโมง', '小时']], ['reason', 'เหตุผล / Reason', ['reason', 'เหตุผล', '原因']]],
   ot: OT_FIELDS
 };
-let dmMode = 'leave', dmMethod = 'form', dmHeaders = [], dmRows = [];
-function openDataModal(mode) { if (mode) dmMode = mode; if (!isUnlocked() && !DM_PUBLIC.includes(dmMode)) dmMode = 'ot'; dmMethod = 'form'; dmNote(''); dmRender(); byId('dataPanel').classList.remove('d-none'); byId('dataPanel').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+let dmMode = 'editEmp', dmMethod = 'form', dmHeaders = [], dmRows = [];
+function openDataModal(mode) { if (mode) dmMode = mode; if (isUnlocked() && !['editEmp', 'quota'].includes(dmMode)) dmMode = 'editEmp'; if (!isUnlocked() && !DM_PUBLIC.includes(dmMode)) dmMode = 'ot'; dmMethod = 'form'; dmNote(''); dmRender(); byId('dataPanel').classList.remove('d-none'); byId('dataPanel').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 function closeDataPanel() { byId('dataPanel').classList.add('d-none'); }
 byId('rangeBar').parentNode.insertBefore(byId('dataPanel'), byId('rangeBar'));
 function dmSetMode(m) { dmMode = m; dmMethod = 'form'; dmNote(''); dmRender(); }
@@ -1323,8 +1323,7 @@ function dmNote(msg, ok = true) { (isUnlocked() ? byId('dmMsg') : byId('pubMsg')
 const empOpts = () => employeesData.map(e => `<option value="${e.startRow}">${xE(e.empId)} ${xE(e.name)}</option>`).join('');
 function dmRender() {
   byId('dmMode').innerHTML = dmModes().map(([k, [a, b]]) => `<option value="${k}"${k === dmMode ? ' selected' : ''}>${L(a, b)}</option>`).join('');
-  byId('dmMethods').innerHTML = [['form', L('ฟอร์ม', 'Form'), 'ui-checks'], ['paste', L('วางตาราง (Paste)', 'Paste table'), 'clipboard'], ['file', L('แนบไฟล์ .xlsx/.csv', 'Attach .xlsx/.csv'), 'file-earmark-spreadsheet']]
-    .map(([k, l, ic]) => `<button type="button" class="btn ${dmMethod === k ? 'btn-primary' : 'btn-outline-primary'}" onclick="dmSetMethod('${k}')"><i class="bi bi-${ic}"></i> ${l}</button>`).join('');
+  byId('dmMethods').parentElement.classList.add('d-none'); dmMethod = 'form';
   byId('dmMap').innerHTML = ''; dmHeaders = []; dmRows = [];
   const b = byId('dmBody');
   if (dmMethod === 'form') { b.innerHTML = DM_FORM[dmMode](); DM_INIT[dmMode](); return; }
@@ -1402,7 +1401,8 @@ const qInputs = (pfx, withUsed) => `<table class="table table-sm table-bordered 
 const DM_FORM = {
   addEmp: () => `<div class="row g-2 mb-2"><div class="col-5"><label class="form-label small fw-bold mb-0">${tx('lblEmpId')}</label><input id="aeCode" class="form-control form-control-sm" placeholder="C26999"></div><div class="col-7"><label class="form-label small fw-bold mb-0">${tx('lblName')}</label><input id="aeName" class="form-control form-control-sm"></div></div>${qInputs('ae', true)}${wsSelect('aeSched')}<label class="form-label small fw-bold mb-0">${tx('lblNote')}</label><input id="aeNote" class="form-control form-control-sm"><button class="btn btn-success btn-sm mt-3" onclick="saveAddEmpForm()">${tx('btnAddConfirm')}</button>`,
   delEmp: () => `<label class="form-label small fw-bold mb-0">${L('เลือกพนักงานที่จะลบ (เลือกได้หลายคน)', 'Select employees to delete (multi-select)')}</label><select id="deSel" multiple size="10" class="form-select form-select-sm">${empOpts()}</select><div class="small text-muted mt-1">${L('ลบพนักงาน โควต้า ประวัติการลา และประวัติโควต้าของคนนั้น (OT log จะเก็บไว้โดยไม่ผูกพนักงาน)', 'Removes the employee, quotas, leave log and quota log (OT log is kept, unlinked)')}</div><button class="btn btn-danger btn-sm mt-2" onclick="saveDelEmpForm()"><i class="bi bi-trash"></i> ${tx('btnDelete')}</button>`,
-  editEmp: () => `<label class="form-label small fw-bold mb-0">${L('พนักงาน', 'Employee')}</label><select id="eeSel" class="form-select form-select-sm mb-2" onchange="eeFill()">${empOpts()}</select><div class="row g-2"><div class="col-5"><label class="form-label small fw-bold mb-0">${tx('lblEmpId')}</label><input id="eeCode" class="form-control form-control-sm"></div><div class="col-7"><label class="form-label small fw-bold mb-0">${tx('lblName')}</label><input id="eeName" class="form-control form-control-sm"></div><div class="col-12"><label class="form-label small fw-bold mb-0">${tx('lblNote')}</label><input id="eeNote" class="form-control form-control-sm"></div><div class="col-12">${wsSelect('eeSched')}</div></div><button class="btn btn-primary btn-sm mt-3" onclick="saveEditEmpForm()">${tx('btnSave')}</button> <button class="btn btn-outline-secondary btn-sm mt-3" onclick="eeFull()">${L('เปิดหน้าแก้ไขเต็ม (รวมโควต้า/วันลาจริง)', 'Open full editor (quota / used)')}</button>`,
+  editEmp: () => `<label class="form-label small fw-bold mb-0">${L('พนักงาน', 'Employee')}</label><select id="eeSel" class="form-select form-select-sm mb-2" onchange="eeFill()">${empOpts()}</select><div class="d-flex align-items-center gap-3 mb-3"><div id="eeAv"></div><label class="btn btn-sm btn-outline-primary mb-0"><i class="bi bi-camera"></i> ${L('เพิ่ม/เปลี่ยนรูป', 'Add / change photo', '添加/更换照片')}<input type="file" accept="image/*" hidden onchange="avUpload(+byId('eeSel').value, this)"></label></div><div class="row g-2"><div class="col-5"><label class="form-label small fw-bold mb-0">${tx('lblEmpId')}</label><input id="eeCode" class="form-control form-control-sm"></div><div class="col-7"><label class="form-label small fw-bold mb-0">${tx('lblName')}</label><input id="eeName" class="form-control form-control-sm"></div><div class="col-12"><label class="form-label small fw-bold mb-0">${tx('lblNote')}</label><input id="eeNote" class="form-control form-control-sm"></div><div class="col-12">${wsSelect('eeSched')}</div></div><button class="btn btn-primary btn-sm mt-3" onclick="saveEditEmpForm()">${tx('btnSave')}</button> <button class="btn btn-outline-secondary btn-sm mt-3" onclick="eeFull()">${L('เปิดหน้าแก้ไขเต็ม (รวมโควต้า/วันลาจริง)', 'Open full editor (quota / used)')}</button> <button class="btn btn-outline-danger btn-sm mt-3" onclick="eeDelete()"><i class="bi bi-trash"></i> ${L('ลบพนักงานคนนี้', 'Delete this employee', '删除该员工')}</button>
+    <details class="mt-4 border rounded p-2"><summary class="fw-bold" style="cursor:pointer"><i class="bi bi-person-plus"></i> ${L('เพิ่มพนักงานใหม่', 'Add a new employee', '添加新员工')}</summary><div class="mt-2">${DM_FORM.addEmp()}</div></details>`,
   quota: () => `<div id="qTable" class="table-responsive"></div><label class="form-label small mb-0">${tx('quotaNote')}</label><input id="qNote" class="form-control form-control-sm"><button class="btn btn-warning btn-sm fw-bold mt-2" onclick="saveQuotas()">${tx('btnSaveQuota')}</button><hr><h6 class="fw-bold">${tx('quotaHist')}</h6><div id="qHist" class="table-responsive small"></div>`,
   leave: () => `<div class="row g-2"><div class="col-md-6"><label class="form-label small mb-0">${L('ใคร (พนักงาน)', 'Who (employee)', '谁（员工）')}</label><select id="lvEmp" class="form-select form-select-sm"></select></div><div class="col-md-6"><label class="form-label small mb-0">${L('วันไหน (วันที่ลา)', 'Date', '请假日期')}</label><input type="date" id="lvDate" class="form-control form-control-sm"></div><div class="col-md-6"><label class="form-label small mb-0">${L('ลาอะไร (ประเภทวันลา)', 'Leave type', '请假类别')}</label><select id="lvType" class="form-select form-select-sm"></select></div><div class="col-md-6"><label class="form-label small mb-0">${L('กี่ชั่วโมง (8 ชม. = 1 วัน)', 'Hours (8 h = 1 day)', '小时数（8小时=1天）')}</label><input type="number" id="lvHours" min="0" step="0.5" class="form-control form-control-sm"></div><div class="col-12"><label class="form-label small mb-0">${L('เหตุผล / หมายเหตุ', 'Reason / note', '原因 / 备注')}</label><textarea id="lvReason" rows="2" class="form-control form-control-sm"></textarea></div></div><button class="btn btn-success btn-sm mt-3" onclick="saveLeaveLog()">${tx('btnSaveLeave')}</button><hr><h6 class="fw-bold">${tx('leaveHist')}</h6><div id="lvHist" class="table-responsive small"></div>`,
   ot: () => { const ft = (th, en) => L(th, en, en), f = (zh, sub, body, req) => `<div class="fs-f"><div class="fs-lb">${req ? '<span class="req">*</span>' : ''}${zh}</div><div class="fs-sub">${sub}</div>${body}</div>`; return `<datalist id="otfCodes">${employeesData.map(e => `<option value="${xE(e.empId)}">${xE(e.name)}</option>`).join('')}</datalist>
@@ -1421,7 +1421,7 @@ const DM_INIT = {
   leave: () => { byId('lvEmp').innerHTML = empOpts(); byId('lvType').innerHTML = Object.keys(LEAVE_LABELS).map(k => `<option value="${k}">${lvName(k)}</option>`).join(''); byId('lvDate').value = nowBkk(); renderLeaveHist(); },
   ot: () => { }
 };
-function eeFill() { const e = employeesData.find(x => String(x.startRow) === byId('eeSel').value); if (!e) return; byId('eeCode').value = e.empId; byId('eeName').value = e.name; byId('eeNote').value = e.note || ''; byId('eeSched').value = e.schedule; }
+function eeFill() { const e = employeesData.find(x => String(x.startRow) === byId('eeSel').value); if (!e) return; byId('eeAv').innerHTML = avHtml(e, 64); byId('eeCode').value = e.empId; byId('eeName').value = e.name; byId('eeNote').value = e.note || ''; byId('eeSched').value = e.schedule; }
 function eeFull() { const i = employeesData.findIndex(x => String(x.startRow) === byId('eeSel').value); if (i < 0) return; closeDataPanel(); setTimeout(() => openEditModal(i), 350); }
 
 /* ---------- employee operations ---------- */
@@ -1460,6 +1460,11 @@ async function saveDelEmpForm() {
   if (!confirm(L(`ยืนยันลบพนักงาน ${ids.length} คน?`, `Delete ${ids.length} employee(s)?`))) return;
   const ok = await formRun(async () => { await deleteEmployees(ids); return L(`ลบแล้ว ${ids.length} คน`, `Deleted ${ids.length}`); });
   if (ok) dmRender();
+}
+async function eeDelete() {
+  const id = +byId('eeSel').value, e = employeesData.find(x => x.startRow === id); if (!e) return;
+  if (!confirm(L(`ยืนยันลบ ${e.name} (${e.empId})? โควต้า ประวัติการลา และประวัติโควต้าของคนนี้จะถูกลบด้วย`, `Delete ${e.name} (${e.empId})? Quotas, leave log and quota log are removed too.`))) return;
+  const ok = await formRun(async () => { await deleteEmployees([id]); return L('ลบแล้ว', 'Deleted'); }); if (ok) dmRender();
 }
 async function saveEditEmpForm() {
   const id = +byId('eeSel').value, code = byId('eeCode').value.trim(), name = byId('eeName').value.trim();
@@ -2061,7 +2066,7 @@ async function avUpload(startRow, input) {
   try { const b = await avResize(f), up = await supabaseClient.storage.from('mp-evidence').upload('avatars/' + avKey(e.empId) + '.jpg', b, { upsert: true, contentType: 'image/jpeg' }); if (up.error) throw up.error;
     avVer[avKey(e.empId)] = Date.now(); localStorage.setItem('mp_avver', JSON.stringify(avVer)); }
   catch (err) { alert(L('อัปโหลดรูปไม่สำเร็จ: ', 'Photo upload failed: ', '上传失败：') + (err.message || err) + '\n' + L('ตรวจสอบสิทธิ์ (Policy) ของ Storage bucket "mp-evidence" ให้อนุญาตการเขียน/แทนที่ไฟล์', 'Check the Storage policy of bucket "mp-evidence" (insert + update allowed).', '请检查存储桶 mp-evidence 的写入/覆盖权限')); }
-  showLoader(false); renderPersonLog(); renderOverview(); if (byId('calBox').innerHTML) calRender();
+  showLoader(false); renderPersonLog(); renderOverview(); if (byId('eeSel')) eeFill(); if (byId('calBox').innerHTML) calRender();
 }
 /* ===== per-person log window (opened from the overview chart) ===== */
 let plArgs = null;
